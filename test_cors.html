@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Test for Activ Education API</title>
+</head>
+<body>
+    <h1>CORS Test for Activ Education API</h1>
+    <div id="output"></div>
+    <button id="testBtn">Test API Connection</button>
+
+    <script>
+        document.getElementById('testBtn').addEventListener('click', async () => {
+            const output = document.getElementById('output');
+            output.innerHTML = '<p>Testing API connection...</p>';
+
+            try {
+                // Test OPTIONS request (preflight)
+                const optionsResponse = await fetch('http://10.0.10.172:8081/api/v1/bibliotheque/series', {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://127.0.0.1:8083', // Assuming Flutter web runs on this port
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+
+                output.innerHTML += `<p>OPTIONS Status: ${optionsResponse.status}</p>`;
+                output.innerHTML += `<p>OPTIONS Headers: </p><pre>${JSON.stringify(Object.fromEntries(optionsResponse.headers.entries()), null, 2)}</pre>`;
+
+                // Test actual GET request
+                const response = await fetch('http://10.0.10.172:8081/api/v1/bibliotheque/series', {
+                    method: 'GET',
+                    headers: {
+                        'Origin': 'http://127.0.0.1:8083',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                output.innerHTML += `<p>GET Status: ${response.status}</p>`;
+                output.innerHTML += `<p>GET Headers: </p><pre>${JSON.stringify(Object.fromEntries(response.headers.entries()), null, 2)}</pre>`;
+
+                const data = await response.json();
+                output.innerHTML += `<p>GET Data: </p><pre>${JSON.stringify(data, null, 2)}</pre>`;
+
+            } catch (error) {
+                output.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

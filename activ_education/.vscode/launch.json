@@ -1,0 +1,18 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "ActivEducation (Chrome sans CORS)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome",
+            "args": [
+                "--web-port=8080",
+                "--web-browser-flag",
+                "--disable-web-security",
+                "--web-browser-flag",
+                "--disable-features=IsolateOrigins,site-per-process"
+            ]
+        }
+    ]
+}
