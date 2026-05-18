@@ -18,16 +18,45 @@ activ-education/
 
 ### Prerequisites
 
-- **Flutter App**: Flutter SDK (>= 3.0.0), Dart, and an emulator or physical device
-- **React Admin App**: Node.js (>= 16.x) and npm or yarn
-- **Backend**: Spring Boot API running on `http://localhost:8080/api/v1` (adjustable via environment variables)
+Before you begin, ensure you have the following installed:
+
+#### Flutter SDK (for the Flutter App)
+- **Flutter**: >= 3.0.0 (get it from [flutter.dev](https://flutter.dev/docs/get-started/install))
+- **Dart**: Comes with Flutter SDK
+- **Platform-specific setup**:
+  - **Android**: Android Studio + Android SDK or just the [Android command-line tools](https://developer.android.com/studio#command-tools)
+  - **iOS**: Xcode (requires macOS)
+  - **Web**: Chrome browser (already installed on most systems)
+  - **Linux**: Standard Linux development tools
+
+**Verify Flutter installation**:
+```bash
+flutter doctor
+```
+
+#### Node.js (for the React Admin App)
+- **Node.js**: >= 16.x (LTS version recommended) - download from [nodejs.org](https://nodejs.org/)
+- **npm**: Comes with Node.js (or use [yarn](https://yarnpkg.com/) if preferred)
+
+**Verify Node.js installation**:
+```bash
+node --version
+npm --version
+```
+
+#### Backend API
+- **Spring Boot API**: Running on `http://localhost:8080/api/v1` (adjustable via environment variables)
+- Make sure the backend is running before starting the applications
 
 ### Flutter App (`activ_education/`)
 
 #### Installation
 
 ```bash
+# Navigate to the Flutter project directory
 cd activ_education
+
+# Get Flutter dependencies
 flutter pub get
 ```
 
@@ -71,7 +100,10 @@ API_SKIP_NGROK_WARNING=true   # Set to true to skip ngrok warnings (optional)
 #### Installation
 
 ```bash
+# Navigate to the React project directory
 cd activ_education_admin
+
+# Install npm dependencies
 npm install
 ```
 
