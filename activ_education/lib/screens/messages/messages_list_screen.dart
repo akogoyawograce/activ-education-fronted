@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
+import '../../widgets/skeleton_widget.dart';
 
 class MessagesListScreen extends StatefulWidget {
   const MessagesListScreen({super.key});
@@ -19,6 +20,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   int _unreadCount = 0;
   bool _isLoading = true;
   String? _userTrackingId;
+  String? _userRole;
 
   @override
   void initState() {
@@ -30,6 +32,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
     try {
       setState(() => _isLoading = true);
       _userTrackingId = await _api.getTrackingId();
+      _userRole = await _api.getUserRole();
       if (_userTrackingId == null) return;
 
       final result = await _api.getMessagesRecus(_userTrackingId!, size: 50);
@@ -93,6 +96,11 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.backgroundGrey,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => _showNewMessageSheet(context),
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.edit_rounded, color: Colors.white),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -147,7 +155,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
             // Message list
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const SkeletonListPage()
                   : _messages.isEmpty
                       ? _buildEmptyState()
                       : _buildMessageList(),
@@ -160,34 +168,63 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 36,
+                color: AppColors.primary,
+              ),
             ),
-            child: const Icon(Icons.chat_bubble_outline_rounded,
-                color: AppColors.primary, size: 40),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Aucun message',
-            style: AppTextStyles.headingMedium.copyWith(
-              color: AppColors.textDark,
+            const SizedBox(height: 20),
+            Text(
+              'Aucun message',
+              style: AppTextStyles.headingMedium.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Vos messages apparaîtront ici',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textMedium,
+            const SizedBox(height: 8),
+            Text(
+              'Envoyez votre premier message\nà un conseiller',
+              textAlign: TextAlign.center,
+              style: AppTextStyles.bodyMedium.copyWith(
+                color: AppColors.textMedium,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showNewMessageSheet(context),
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                label: const Text('Nouveau message'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  textStyle: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -338,6 +375,31 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
       }
     }
   }
+  void _navigateToChat(String contactId, String contactName) {
+    Navigator.pushNamed(context, AppRoutes.chat, arguments: {
+      'expediteurId': contactId,
+      'expediteurNom': contactName,
+    });
+  }
+
+  void _showNewMessageSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) => _NewMessageSheet(
+        api: _api,
+        userRole: _userRole,
+        onSelectContact: (id, name) {
+          Navigator.pop(sheetContext);
+          _navigateToChat(id, name);
+        },
+      ),
+    );
+  }
+
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final diff = now.difference(date);
@@ -348,5 +410,293 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
     if (diff.inDays < 7) return 'Il y a ${diff.inDays}j';
 
     return '${date.day}/${date.month}';
+  }
+}
+
+class _NewMessageSheet extends StatefulWidget {
+  final ApiService api;
+  final String? userRole;
+  final void Function(String contactId, String contactName) onSelectContact;
+
+  const _NewMessageSheet({
+    required this.api,
+    this.userRole,
+    required this.onSelectContact,
+  });
+
+  @override
+  State<_NewMessageSheet> createState() => _NewMessageSheetState();
+}
+
+class _NewMessageSheetState extends State<_NewMessageSheet> {
+  final _searchController = TextEditingController();
+  List<ConseillerResponse> _conseillers = [];
+  bool _loadingConseillers = true;
+  String _manualId = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConseillers();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadConseillers() async {
+    try {
+      final conseillers = await widget.api.getConseillers(size: 200);
+      setState(() {
+        _conseillers = conseillers.where((c) => c.actif).toList();
+        _loadingConseillers = false;
+      });
+    } catch (e) {
+      setState(() => _loadingConseillers = false);
+    }
+  }
+
+  List<ConseillerResponse> get _filteredConseillers {
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isEmpty) return _conseillers;
+    return _conseillers.where((c) {
+      final fullName = '${c.prenom} ${c.nom}'.toLowerCase();
+      return fullName.contains(query) || c.trackingId.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+              child: Row(
+                children: [
+                  const Text(
+                    'Nouveau message',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundGrey,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.close, size: 18),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Search field
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Rechercher un conseiller...',
+                  prefixIcon: const Icon(Icons.search, size: 20),
+                  filled: true,
+                  fillColor: AppColors.backgroundGrey,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Manual ID entry
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Ou entrer un ID manuellement...',
+                        isDense: true,
+                        filled: true,
+                        fillColor: AppColors.backgroundGrey,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 13),
+                      onChanged: (v) => setState(() => _manualId = v),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: _manualId.trim().length > 5
+                        ? () => widget.onSelectContact(
+                              _manualId.trim(),
+                              _manualId.trim().substring(0, 8),
+                            )
+                        : null,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: _manualId.trim().length > 5
+                            ? AppColors.primary
+                            : Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_forward_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Divider
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    'Conseillers disponibles',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Divider(color: Colors.grey.shade200)),
+                ],
+              ),
+            ),
+            // List of conseillers
+            Expanded(
+              child: _loadingConseillers
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filteredConseillers.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Aucun conseiller trouvé',
+                            style: TextStyle(color: Colors.grey.shade500),
+                          ),
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+                          itemCount: _filteredConseillers.length,
+                          itemBuilder: (context, index) {
+                            final c = _filteredConseillers[index];
+                            return GestureDetector(
+                              onTap: () => widget.onSelectContact(
+                                c.trackingId,
+                                '${c.prenom} ${c.nom}',
+                              ),
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.backgroundGrey,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.12),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${c.prenom[0]}${c.nom[0]}',
+                                          style: const TextStyle(
+                                            color: AppColors.primary,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '${c.prenom} ${c.nom}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              color: AppColors.textDark,
+                                            ),
+                                          ),
+                                          if (c.specialites != null)
+                                            Text(
+                                              c.specialites!,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade500,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    const Icon(
+                                      Icons.chat_bubble_outline_rounded,
+                                      size: 18,
+                                      color: AppColors.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

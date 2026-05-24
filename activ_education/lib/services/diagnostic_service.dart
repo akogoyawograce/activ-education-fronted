@@ -45,4 +45,5 @@ class DiagnosticService extends BaseService {
     final res = await dio.get('/api/v1/eleves/$eleveId/resultats-diagnostic', queryParameters: {'page': page, 'size': size});
     return PageResponse.fromJson(res.data, (json) => ResultatDiagnosticResponse.fromJson(json));
   }
+
 }

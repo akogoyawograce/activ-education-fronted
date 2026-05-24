@@ -1,10 +1,12 @@
 // lib/screens/messages/rdv_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/skeleton_widget.dart';
 
 class RdvScreen extends StatefulWidget {
   final String? conseillerId;
@@ -360,7 +362,7 @@ class _RdvScreenState extends State<RdvScreen>
             // Content
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const SkeletonListPage()
                   : _isCreatingMode
                       ? _buildCreateForm()
                       : _buildRdvsList(),
@@ -771,8 +773,11 @@ class _RdvScreenState extends State<RdvScreen>
                 if (rdv.lienVisio != null) ...[
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        // TODO: Ouvrir lien visio
+                      onTap: () async {
+                        final uri = Uri.tryParse(rdv.lienVisio!);
+                        if (uri != null && await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 10),

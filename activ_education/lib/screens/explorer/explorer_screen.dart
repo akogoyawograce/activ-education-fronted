@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
+import '../../widgets/skeleton_widget.dart';
+import '../errors/empty_content_screen.dart';
 import 'fiche_detail_screen.dart';
+import 'category_list_screen.dart';
+import 'catalogue_filter_sheet.dart';
 
 class ExplorerScreen extends StatefulWidget {
   const ExplorerScreen({super.key});
@@ -28,6 +32,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
 
   bool _isLoading = true;
   String _searchQuery = '';
+  CatalogueFilters _filters = const CatalogueFilters();
 
   final List<String> _tabs = ['Tout', 'Séries', 'Filières', 'Métiers', 'Établissements'];
 
@@ -41,6 +46,32 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showFilters() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CatalogueFilterSheet(
+        current: _filters,
+        onApply: (f) {
+          setState(() => _filters = f);
+        },
+      ),
+    );
+  }
+
+  void _showAllCategories() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DefaultTabController(
+          length: 4,
+          child: _AllCategoriesScreen(filters: _filters),
+        ),
+      ),
+    );
   }
 
   Future<void> _loadAll() async {
@@ -113,9 +144,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             // ── Contenu ──────────────────────────────────────────────────
             Expanded(
               child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary))
+                  ? const SkeletonListPage()
                   : RefreshIndicator(
                       onRefresh: _loadAll,
                       color: AppColors.primary,
@@ -143,7 +172,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
           const Spacer(),
           // Filtre
           GestureDetector(
-            onTap: () {},
+            onTap: _showFilters,
             child: Container(
               width: 38,
               height: 38,
@@ -156,8 +185,12 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                       blurRadius: 6)
                 ],
               ),
-              child: const Icon(Icons.tune_rounded,
-                  color: AppColors.primary, size: 20),
+              child: Badge(
+                isLabelVisible: _filters.hasActiveFilters,
+                label: const Text('!', style: TextStyle(fontSize: 9, color: Colors.white)),
+                child: const Icon(Icons.tune_rounded,
+                    color: AppColors.primary, size: 20),
+              ),
             ),
           ),
           const SizedBox(width: 10),
@@ -250,7 +283,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                 child: Text(
                   _tabs[index],
                   style: TextStyle(
-                    fontFamily: 'Nunito',
+                    fontFamily: 'Inter',
                     fontSize: 13,
                     fontWeight:
                         isActive ? FontWeight.w700 : FontWeight.w500,
@@ -297,11 +330,14 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                 const Text('Fiches d\'orientation',
                     style: AppTextStyles.headingMedium),
                 const Spacer(),
-                Text(
-                  'Voir tout',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.w700,
+                GestureDetector(
+                  onTap: _showAllCategories,
+                  child: Text(
+                    'Voir tout',
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ],
@@ -381,7 +417,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
               child: const Text(
                 'FILIÈRE DU MOMENT',
                 style: TextStyle(
-                  fontFamily: 'Nunito',
+                  fontFamily: 'Inter',
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -393,7 +429,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             Text(
               f.titre,
               style: const TextStyle(
-                fontFamily: 'Nunito',
+                fontFamily: 'Inter',
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: Colors.white,
@@ -414,7 +450,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
                   child: const Text(
                     'Très recherché ce mois',
                     style: TextStyle(
-                      fontFamily: 'Nunito',
+                      fontFamily: 'Inter',
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -433,22 +469,63 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   }
 
   Widget _buildEmpty() {
-    return SizedBox(
+    if (_searchQuery.isNotEmpty) {
+      return const SizedBox(
+        height: 200,
+        child: EmptyContentScreen(
+          icon: Icons.search_off_rounded,
+          title: 'Aucun résultat trouvé',
+          subtitle: 'Essayez un autre mot-clé',
+        ),
+      );
+    }
+    return const SizedBox(
       height: 200,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded,
-                size: 48,
-                color: AppColors.textLight.withValues(alpha: 0.5)),
-            const SizedBox(height: 12),
-            const Text(
-              'Aucun résultat trouvé',
-              style: AppTextStyles.bodyMedium,
-            ),
+      child: EmptyContentScreen(
+        icon: Icons.library_books_outlined,
+        title: 'Aucune fiche disponible',
+        subtitle: 'Revenez plus tard, le catalogue s\'enrichit régulièrement.',
+      ),
+    );
+  }
+}
+
+// ─── TOUTES LES CATÉGORIES ───────────────────────────────────────────────────
+class _AllCategoriesScreen extends StatelessWidget {
+  final CatalogueFilters filters;
+
+  const _AllCategoriesScreen({required this.filters});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.backgroundGrey,
+      appBar: AppBar(
+        title: const Text('Toutes les fiches',
+            style: AppTextStyles.headingMedium),
+        bottom: const TabBar(
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textLight,
+          indicatorColor: AppColors.primary,
+          labelStyle: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 13,
+              fontWeight: FontWeight.w700),
+          tabs: [
+            Tab(text: 'Séries'),
+            Tab(text: 'Filières'),
+            Tab(text: 'Métiers'),
+            Tab(text: 'Étab.'),
           ],
         ),
+      ),
+      body: TabBarView(
+        children: [
+          CategoryListScreen(type: CategoryType.series, title: 'Séries'),
+          CategoryListScreen(type: CategoryType.filieres, title: 'Filières'),
+          CategoryListScreen(type: CategoryType.metiers, title: 'Métiers'),
+          CategoryListScreen(type: CategoryType.etablissements, title: 'Établissements'),
+        ],
       ),
     );
   }
@@ -526,7 +603,7 @@ class _FicheCard extends StatelessWidget {
               child: Text(
                 _typeLabel,
                 style: TextStyle(
-                  fontFamily: 'Nunito',
+                  fontFamily: 'Inter',
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
                   color: _typeColor,

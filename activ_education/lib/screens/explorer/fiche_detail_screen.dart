@@ -1,7 +1,10 @@
 // lib/screens/explorer/fiche_detail_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 
@@ -18,9 +21,61 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
   final _api = ApiService();
   bool _isFavori = false;
   String? _favoriId;
+  List<FicheBase> _relatedFiches = [];
+  bool _loadingRelated = true;
 
   // Accordéons ouverts
   final Set<String> _openSections = {'programme'};
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFavori();
+    _loadRelatedFiches();
+  }
+
+  Future<void> _checkFavori() async {
+    try {
+      final userId = await _api.getTrackingId();
+      if (userId == null) return;
+      final favs = await _api.explorer.getFavorisUtilisateur(userId, size: 100);
+      final match = favs.content.cast<FavoriResponse?>().firstWhere(
+        (f) => f?.ficheTrackingId == widget.fiche.trackingId,
+        orElse: () => null,
+      );
+      if (match != null) {
+        setState(() {
+          _isFavori = true;
+          _favoriId = match.trackingId;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _loadRelatedFiches() async {
+    try {
+      final type = widget.fiche.typeFiche?.toLowerCase() ?? '';
+      PageResponse result;
+      if (type.contains('serie')) {
+        result = await _api.listerSeries(page: 0, size: 6);
+      } else if (type.contains('filiere')) {
+        result = await _api.listerFilieres(page: 0, size: 6);
+      } else if (type.contains('metier')) {
+        result = await _api.listerMetiers(page: 0, size: 6);
+      } else {
+        result = await _api.listerEtablissements(page: 0, size: 6);
+      }
+      setState(() {
+        _relatedFiches = (result.content as List<FicheBase>)
+            .where((f) => f.trackingId != widget.fiche.trackingId)
+            .take(4)
+            .toList();
+        _loadingRelated = false;
+      });
+    } catch (_) {
+      setState(() => _loadingRelated = false);
+    }
+  }
 
   Color get _typeColor {
     final type = widget.fiche.typeFiche?.toLowerCase() ?? '';
@@ -96,7 +151,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: _share,
                 icon: const Icon(Icons.share_outlined, color: Colors.white),
               ),
             ],
@@ -118,7 +173,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                       child: Text(
                         _typeLabel.toUpperCase(),
                         style: const TextStyle(
-                          fontFamily: 'Nunito',
+                          fontFamily: 'Inter',
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
@@ -130,7 +185,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                     Text(
                       widget.fiche.titre,
                       style: const TextStyle(
-                        fontFamily: 'Nunito',
+                        fontFamily: 'Inter',
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
@@ -168,6 +223,12 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                   // ── CTA Conseiller ───────────────────────────────────
                   _buildCTAConseiller(),
 
+                  // ── Fiches similaires ────────────────────────────────
+                  if (!_loadingRelated && _relatedFiches.isNotEmpty) ...[
+                    const SizedBox(height: 32),
+                    _buildRelatedFiches(),
+                  ],
+
                   const SizedBox(height: 80),
                 ],
               ),
@@ -203,7 +264,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                 child: const Text(
                   'En bref',
                   style: TextStyle(
-                    fontFamily: 'Nunito',
+                    fontFamily: 'Inter',
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -261,7 +322,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                 child: Text(
                   tag,
                   style: TextStyle(
-                    fontFamily: 'Nunito',
+                    fontFamily: 'Inter',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: _typeColor,
@@ -280,9 +341,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
         const Text('Comprendre en vidéo', style: AppTextStyles.headingMedium),
         const SizedBox(height: 12),
         GestureDetector(
-          onTap: () {
-            // TODO: ouvrir lecteur vidéo / YouTube
-          },
+          onTap: () => _launchUrl(widget.fiche.videoUrl),
           child: Container(
             height: 190,
             decoration: BoxDecoration(
@@ -334,7 +393,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
                     child: const Text(
                       '3 min 24',
                       style: TextStyle(
-                        fontFamily: 'Nunito',
+                        fontFamily: 'Inter',
                         fontSize: 11,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
@@ -507,9 +566,10 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () {
-              // TODO: naviguer vers Messages avec contexte
-            },
+            onTap: () => Navigator.pushNamed(
+              context, AppRoutes.messages,
+              arguments: {'ficheContexte': widget.fiche.titre},
+            ),
             child: Container(
               padding: const EdgeInsets.symmetric(
                   horizontal: 14, vertical: 8),
@@ -520,7 +580,7 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
               child: const Text(
                 'Contacter',
                 style: TextStyle(
-                  fontFamily: 'Nunito',
+                  fontFamily: 'Inter',
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
@@ -532,10 +592,106 @@ class _FicheDetailScreenState extends State<FicheDetailScreen> {
       ),
     );
   }
+
+  // ── FICHES SIMILAIRES ─────────────────────────────────────────────────────
+  Widget _buildRelatedFiches() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Fiches similaires', style: AppTextStyles.headingMedium),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 150,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: _relatedFiches.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => _RelatedFicheCard(
+              fiche: _relatedFiches[i],
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => FicheDetailScreen(fiche: _relatedFiches[i]),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+  Future<void> _launchUrl(String? url) async {
+    if (url == null || url.isEmpty) return;
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _share() async {
+    final text = '${widget.fiche.titre} — ${widget.fiche.resume}';
+    await Clipboard.setData(ClipboardData(text: text));
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Copié dans le presse-papier')),
+      );
+    }
+  }
 }
 
 class _Section {
   final String titre;
   final String contenu;
   const _Section(this.titre, this.contenu);
+}
+
+class _RelatedFicheCard extends StatelessWidget {
+  final FicheBase fiche;
+  final VoidCallback onTap;
+
+  const _RelatedFicheCard({required this.fiche, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 140,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              fiche.titre,
+              style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w700, fontSize: 13),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              fiche.resume,
+              style: AppTextStyles.caption,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -2,21 +2,24 @@ import '../models/models.dart';
 import 'base_service.dart';
 
 class AuthService extends BaseService {
-  // Singleton
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
-  /// Inscription élève
-  Future<EleveResponse> inscrireEleve(EleveRequest request) async {
-    final res = await dio.post('/api/v1/eleves', data: request.toJson());
-    return EleveResponse.fromJson(res.data);
+  /// JWT Login
+  Future<TokenResponse> login(String email, String password) async {
+    final body = LoginRequest(email: email, motDePasse: password);
+    final res = await dio.post('/api/v1/auth/login', data: body.toJson());
+    return TokenResponse.fromJson(res.data);
   }
 
-  /// Login simulé ou réel (selon l'API actuelle)
-  /// Note: Dans api_service.dart actuel, le login semble être géré par saveToken
-  /// après un appel spécifique. Je garde la structure actuelle.
+  /// Get current user profile (JWT required)
+  Future<Map<String, dynamic>> getMe() async {
+    final res = await dio.get('/api/v1/auth/me');
+    return res.data as Map<String, dynamic>;
+  }
 
+  /// Save JWT token + user data
   Future<void> saveToken(String token) async {
     await storage.write(key: 'auth_token', value: token);
   }
@@ -30,10 +33,34 @@ class AuthService extends BaseService {
   }
 
   Future<void> logout() async {
+    try {
+      await dio.post('/api/v1/auth/logout');
+    } catch (_) {}
     await storage.deleteAll();
   }
 
-  // User management
+  // Registration (public endpoints)
+  Future<EleveResponse> inscrireEleve(EleveRequest request) async {
+    final res = await dio.post('/api/v1/eleves', data: request.toJson());
+    return EleveResponse.fromJson(res.data);
+  }
+
+  Future<ParentResponse> inscrireParent(ParentRequest request) async {
+    final res = await dio.post('/api/v1/parents', data: request.toJson());
+    return ParentResponse.fromJson(res.data);
+  }
+
+  Future<ConseillerResponse> inscrireConseiller(ConseillerRequest request) async {
+    final res = await dio.post('/api/v1/conseillers', data: request.toJson());
+    return ConseillerResponse.fromJson(res.data);
+  }
+
+  Future<AdministrateurResponse> creerAdministrateur(AdministrateurRequest request) async {
+    final res = await dio.post('/api/v1/administrateurs', data: request.toJson());
+    return AdministrateurResponse.fromJson(res.data);
+  }
+
+  // User lookup
   Future<EleveResponse> getEleve(String trackingId) async {
     final res = await dio.get('/api/v1/eleves/$trackingId');
     return EleveResponse.fromJson(res.data);
@@ -49,8 +76,8 @@ class AuthService extends BaseService {
     return ParentResponse.fromJson(res.data);
   }
 
-  Future<AdministrateurResponse> creerAdministrateur(AdministrateurRequest request) async {
-    final res = await dio.post('/api/v1/administrateurs', data: request.toJson());
+  Future<AdministrateurResponse> getAdministrateur(String trackingId) async {
+    final res = await dio.get('/api/v1/administrateurs/$trackingId');
     return AdministrateurResponse.fromJson(res.data);
   }
 
@@ -72,6 +99,7 @@ class AuthService extends BaseService {
       }
     }
   }
+
   Future<List<ConseillerResponse>> getConseillers({int page = 0, int size = 100}) async {
     final res = await dio.get('/api/v1/conseillers', queryParameters: {'page': page, 'size': size});
     return (res.data as List).map((e) => ConseillerResponse.fromJson(e)).toList();

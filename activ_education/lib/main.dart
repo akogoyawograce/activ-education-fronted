@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
+import 'models/models.dart';
 import 'theme/app_routes.dart';
 import 'services/api_service.dart';
 
@@ -17,6 +18,9 @@ import 'screens/auth/otp_screen.dart';
 // Home & Modules
 import 'screens/main_scaffold.dart';
 import 'screens/explorer/explorer_screen.dart';
+import 'screens/explorer/favorites_screen.dart';
+import 'screens/explorer/fiche_detail_screen.dart';
+import 'screens/search/global_search_screen.dart';
 import 'screens/diagnostic/quiz_screen.dart';
 import 'screens/diagnostic/resultats_screen.dart';
 import 'screens/diagnostic/notes_screen.dart'; // ← Import ajouté
@@ -25,7 +29,12 @@ import 'screens/messages/chat_screen.dart';
 import 'screens/messages/rdv_screen.dart';
 import 'screens/home/notifications_screen.dart';
 import 'screens/home/faq_screen.dart';
+import 'screens/home/enfant_suivi_screen.dart';
+import 'screens/home/diagnostic_enfant_screen.dart';
+import 'screens/messages/rdv_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/errors/not_found_screen.dart';
+import 'screens/errors/network_error_screen.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -64,12 +73,19 @@ class ActivEducationApp extends StatelessWidget {
         AppRoutes.dashboard: (_) => const MainScaffold(),
 
         // Diagnostic
-        AppRoutes.quiz: (_) => const QuizScreen(),
+        AppRoutes.quiz: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final quizTrackingId = args?['quizTrackingId'] as String?;
+          return QuizScreen(quizTrackingId: quizTrackingId);
+        },
         AppRoutes.resultats: (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
           final score = args?['score'] as double?;
-          return ResultatsScreen(score: score);
+          final profil = args?['profil'] as String?;
+          final quizId = args?['quizId'] as String?;
+          return ResultatsScreen(score: score, profil: profil, quizId: quizId);
         },
         AppRoutes.notes: (_) => const NotesScreen(), // ← Route ajoutée
 
@@ -93,8 +109,40 @@ class ActivEducationApp extends StatelessWidget {
               conseillerId: conseillerId, conseillerNom: conseillerNom);
         },
         AppRoutes.notifications: (_) => const NotificationsScreen(),
+        AppRoutes.favorites: (_) => const FavoritesScreen(),
+        AppRoutes.ficheDetail: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final fiche = args?['fiche'] as FicheBase;
+          return FicheDetailScreen(fiche: fiche);
+        },
+        AppRoutes.search: (_) => const GlobalSearchScreen(),
         AppRoutes.faq: (_) => const FaqScreen(),
+        AppRoutes.enfantSuivi: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final enfantId = args?['enfantTrackingId'] as String;
+          return EnfantSuiviScreen(enfantTrackingId: enfantId);
+        },
+        AppRoutes.diagnosticEnfant: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final enfantId = args?['enfantId'] as String;
+          return DiagnosticEnfantScreen(enfantId: enfantId);
+        },
+        AppRoutes.rdvList: (_) => const RdvListScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
+
+        // États
+        AppRoutes.notFound: (_) => const NotFoundScreen(),
+        AppRoutes.networkError: (_) => const NetworkErrorScreen(),
+      },
+      onUnknownRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (_) => NotFoundScreen(
+            message: 'Route "${settings.name}" introuvable.',
+          ),
+        );
       },
     );
   }

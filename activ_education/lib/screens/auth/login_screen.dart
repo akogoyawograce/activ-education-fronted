@@ -3,6 +3,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../widgets/common_widgets.dart';
 import '../../services/api_service.dart';
+import '../../services/google_sign_in_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,30 +14,93 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _uuidController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _uuidController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  void _login() async {
+  Future<void> _googleSignIn() async {
+    try {
+      setState(() => _isLoading = true);
+      final api = ApiService();
+      final google = GoogleSignInService();
+      final profile = await google.signInAndGetProfile();
+      if (profile == null) {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Connexion Google indisponible. Configuration requise (SHA-1, OAuth).'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
+
+      final email = profile['email'] ?? '';
+      final linkedId = await google.getLinkedTrackingId(email);
+
+      if (linkedId != null) {
+        final role = await api.getUserRole();
+        await api.auth.saveUserData(trackingId: linkedId, role: role ?? 'ELEVE');
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
+        }
+      } else {
+        setState(() => _isLoading = false);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Compte non lié'),
+              content: Text('Aucun compte lié à $email.\nConnectez-vous avec email/mot de passe pour lier votre compte Google.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur de connexion Google. Réessayez plus tard.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
       final api = ApiService();
-      final trackingId = _uuidController.text.trim();
+      final token = await api.auth.login(
+        _emailController.text.trim(),
+        _passwordController.text,
+      );
 
-      // Récupérer l'élève par son trackingId (UUID)
-      final response = await api.auth.getEleve(trackingId);
-
-      // Sauvegarder la session
+      await api.auth.saveToken(token.accessToken);
       await api.auth.saveUserData(
-        trackingId: response.trackingId,
-        role: 'ELEVE',
+        trackingId: token.trackingId,
+        role: token.typeUtilisateur,
       );
 
       if (mounted) {
@@ -44,20 +108,14 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushNamedAndRemoveUntil(
             context, AppRoutes.home, (route) => false);
       }
-    } catch (e) {
+    } catch (_) {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'UUID introuvable ou erreur de connexion : ${e.toString()}')),
+          const SnackBar(content: Text('Email ou mot de passe incorrect')),
         );
       }
     }
-  }
-
-  void _loginWithGoogle() {
-    // TODO: implement Google Sign-In
   }
 
   @override
@@ -99,82 +157,55 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: AppTextStyles.displayMedium),
                   const SizedBox(height: 6),
                   const Text(
-                    'Ravi de te revoir',
+                    'Connecte-toi avec ton email',
                     style: AppTextStyles.bodyLarge,
                   ),
                   const SizedBox(height: 32),
 
-                  // Google button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: OutlinedButton(
-                      onPressed: _loginWithGoogle,
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textDark,
-                        side: const BorderSide(
-                            color: AppColors.cardBorder, width: 1.5),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                        backgroundColor: Colors.white,
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Google G icon
-                          Container(
-                            width: 22,
-                            height: 22,
-                            decoration:
-                                const BoxDecoration(shape: BoxShape.circle),
-                            child: const Center(
-                              child: Text(
-                                'G',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFF4285F4),
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Continuer avec Google',
-                            style: AppTextStyles.bodyLarge.copyWith(
-                              color: AppColors.textDark,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-                  const DividerWithText(text: 'Connexion avec identifiant'),
-                  const SizedBox(height: 20),
-
-                  // UUID field
+                  // Email field
                   TextFormField(
-                    controller: _uuidController,
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     style: AppTextStyles.bodyLarge
                         .copyWith(color: AppColors.textDark),
                     validator: (v) =>
-                        (v == null || v.isEmpty) ? 'Identifiant requis' : null,
+                        (v == null || v.isEmpty) ? 'Email requis' : null,
                     decoration: const InputDecoration(
-                      hintText: 'Entrez votre UUID (trackingId)',
+                      hintText: 'ex: prenom@email.com',
+                      prefixIcon: Icon(Icons.email_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Password field
+                  TextFormField(
+                    controller: _passwordController,
+                    obscureText: _obscurePassword,
+                    style: AppTextStyles.bodyLarge
+                        .copyWith(color: AppColors.textDark),
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'Mot de passe requis' : null,
+                    decoration: InputDecoration(
+                      hintText: 'Mot de passe',
+                      prefixIcon: const Icon(Icons.lock_outlined),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Text(
-                      'Cet identifiant a été fourni lors de votre inscription',
-                      style: AppTextStyles.caption.copyWith(
-                        color: AppColors.textMedium,
-                        fontStyle: FontStyle.italic,
-                      ),
+                    child: TextButton(
+                      onPressed: () =>
+                          Navigator.pushNamed(context, AppRoutes.forgotPassword),
+                      child: const Text('Mot de passe oublié ?'),
                     ),
                   ),
 
@@ -189,13 +220,30 @@ class _LoginScreenState extends State<LoginScreen> {
                   const Divider(color: AppColors.cardBorder),
                   const SizedBox(height: 20),
 
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: OutlinedButton.icon(
+                      onPressed: _isLoading ? null : _googleSignIn,
+                      icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
+                      label: const Text('Continuer avec Google'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textDark,
+                        side: const BorderSide(color: AppColors.cardBorder),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
                   const Text(
                     'Pas encore de compte ?',
                     style: AppTextStyles.bodyMedium,
                   ),
                   const SizedBox(height: 12),
 
-                  // Create account button
                   SizedBox(
                     width: double.infinity,
                     height: 54,

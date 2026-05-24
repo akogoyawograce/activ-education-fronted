@@ -1,6 +1,7 @@
 // emplacement : lib/screens/diagnostic/quiz_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
@@ -88,7 +89,11 @@ class _QuizScreenState extends State<QuizScreen>
       _animController.forward();
     } catch (e) {
       setState(() {
-        _error = 'Erreur de chargement du quiz';
+        if (e is DioException && e.response?.statusCode == 401) {
+          _error = 'Connectez-vous pour accéder aux quiz';
+        } else {
+          _error = 'Erreur de chargement du quiz';
+        }
         _isLoading = false;
       });
     }
@@ -442,7 +447,7 @@ class _QuizScreenState extends State<QuizScreen>
                           Text(
                             isLast ? 'Terminer le quiz' : 'Question suivante',
                             style: const TextStyle(
-                                fontFamily: 'Nunito',
+                                fontFamily: 'Inter',
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white),
@@ -556,7 +561,7 @@ class _ReponseOption extends StatelessWidget {
               child: Text(
                 reponse.texteReponse,
                 style: TextStyle(
-                    fontFamily: 'Nunito',
+                    fontFamily: 'Inter',
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected ? AppColors.primary : AppColors.textDark),

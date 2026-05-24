@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary
-  static const Color primary = Color(0xFF3D35D9);       // Bleu principal
-  static const Color primaryDark = Color(0xFF2A25A8);
-  static const Color primaryLight = Color(0xFF5B55E8);
+  // Primary (Figma: #1300C8)
+  static const Color primary = Color(0xFF1300C8);
+  static const Color primaryDark = Color(0xFF0F00A0);
+  static const Color primaryLight = Color(0xFF4A3DFF);
 
   // Accent
-  static const Color accent = Color(0xFFFFA800);         // Orange/Jaune
+  static const Color accent = Color(0xFFFFA800);
   static const Color accentLight = Color(0xFFFFD166);
 
-  // Backgrounds
-  static const Color background = Color(0xFFFFFFFF);
-  static const Color backgroundGrey = Color(0xFFF4F5F9);
-  static const Color backgroundBlue = Color(0xFF3D35D9);
+  // Backgrounds (Figma: #FCF8FF)
+  static const Color background = Color(0xFFFCF8FF);
+  static const Color backgroundGrey = Color(0xFFF4F0FA);
+  static const Color backgroundBlue = Color(0xFF1300C8);
 
-  // Text
+  // Text (Figma: titles #1A1A2E, body #454556)
   static const Color textDark = Color(0xFF1A1A2E);
-  static const Color textMedium = Color(0xFF6B7280);
+  static const Color textMedium = Color(0xFF454556);
   static const Color textLight = Color(0xFFB0B7C3);
   static const Color textWhite = Color(0xFFFFFFFF);
 
@@ -28,14 +28,16 @@ class AppColors {
 
   // Cards
   static const Color cardBorder = Color(0xFFE5E7EB);
-  static const Color selectedCard = Color(0xFF3D35D9);
+  static const Color selectedCard = Color(0xFF1300C8);
 }
 
 class AppTextStyles {
-  static const String fontFamily = 'Nunito';
+  static const String fontFamily = 'Inter';
+  static const String headingFontFamily = 'Poppins';
 
+  // ─── Titres (Poppins) ──────────────────────────────────────────────────
   static const TextStyle displayLarge = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: headingFontFamily,
     fontSize: 28,
     fontWeight: FontWeight.w800,
     color: AppColors.textDark,
@@ -43,7 +45,7 @@ class AppTextStyles {
   );
 
   static const TextStyle displayMedium = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: headingFontFamily,
     fontSize: 24,
     fontWeight: FontWeight.w800,
     color: AppColors.textDark,
@@ -51,26 +53,27 @@ class AppTextStyles {
   );
 
   static const TextStyle headingLarge = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: headingFontFamily,
     fontSize: 20,
     fontWeight: FontWeight.w700,
     color: AppColors.textDark,
   );
 
   static const TextStyle headingMedium = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: headingFontFamily,
     fontSize: 17,
     fontWeight: FontWeight.w700,
     color: AppColors.textDark,
   );
 
   static const TextStyle headingSmall = TextStyle(
-    fontFamily: fontFamily,
+    fontFamily: headingFontFamily,
     fontSize: 15,
     fontWeight: FontWeight.w700,
     color: AppColors.textDark,
   );
 
+  // ─── Corps (Inter) ─────────────────────────────────────────────────────
   static const TextStyle bodyLarge = TextStyle(
     fontFamily: fontFamily,
     fontSize: 15,

@@ -20,6 +20,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
 
+  String _selectedCountry = 'TG';
+  String _countryCode = '+228';
+
   @override
   void dispose() {
     _nomController.dispose();
@@ -51,11 +54,86 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'nom': _nomController.text,
           'prenom': _prenomController.text,
           'email': _emailController.text,
-          'phone': _phoneController.text,
+           'phone': '$_countryCode${_phoneController.text}',
           'password': _passwordController.text,
         }
       );
     }
+  }
+
+  static const _countryList = [
+    ('TG', '🇹🇬', '+228', 'Togo'),
+    ('BJ', '🇧🇯', '+229', 'Bénin'),
+    ('BF', '🇧🇫', '+226', 'Burkina Faso'),
+    ('CI', '🇨🇮', '+225', "Côte d'Ivoire"),
+    ('SN', '🇸🇳', '+221', 'Sénégal'),
+    ('ML', '🇲🇱', '+223', 'Mali'),
+    ('NE', '🇳🇪', '+227', 'Niger'),
+    ('GH', '🇬🇭', '+233', 'Ghana'),
+    ('NG', '🇳🇬', '+234', 'Nigeria'),
+    ('CM', '🇨🇲', '+237', 'Cameroun'),
+    ('CG', '🇨🇬', '+242', 'Congo'),
+    ('CD', '🇨🇩', '+243', 'RDC'),
+    ('GA', '🇬🇦', '+241', 'Gabon'),
+    ('FR', '🇫🇷', '+33', 'France'),
+    ('BE', '🇧🇪', '+32', 'Belgique'),
+    ('CH', '🇨🇭', '+41', 'Suisse'),
+    ('CA', '🇨🇦', '+1', 'Canada'),
+    ('US', '🇺🇸', '+1', 'États-Unis'),
+  ];
+
+  void _openCountryPicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Choisir un pays', style: AppTextStyles.displayMedium),
+            const SizedBox(height: 12),
+            const Divider(),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 360),
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: _countryList.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (_, i) {
+                  final (code, flag, dial, name) = _countryList[i];
+                  final selected = code == _selectedCountry;
+                  return ListTile(
+                    leading: Text(flag, style: const TextStyle(fontSize: 28)),
+                    title: Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                    trailing: Text(dial, style: const TextStyle(color: AppColors.textMedium)),
+                    selected: selected,
+                    selectedTileColor: AppColors.primary.withValues(alpha: 0.08),
+                    onTap: () {
+                      setState(() {
+                        _selectedCountry = code;
+                        _countryCode = dial;
+                      });
+                      Navigator.pop(ctx);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String? _validateEmail(String? v) {
@@ -106,7 +184,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       child: Text(
                         'Inscription',
                         style: TextStyle(
-                          fontFamily: 'Nunito',
+                          fontFamily: 'Inter',
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -195,19 +273,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             style: AppTextStyles.bodyLarge
                                 .copyWith(color: AppColors.textDark),
                             decoration: InputDecoration(
-                              hintText: '+228 00 00 00 00',
-                              prefixIcon: Container(
-                                margin: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 10),
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.backgroundGrey,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Text(
-                                  '🇹🇬',
-                                  style: TextStyle(fontSize: 16),
+                              hintText: '00 00 00 00',
+                              prefixIcon: GestureDetector(
+                                onTap: _openCountryPicker,
+                                child: Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.backgroundGrey,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _countryList.firstWhere(
+                                          (e) => e.$1 == _selectedCountry,
+                                          orElse: () => _countryList[0],
+                                        ).$2,
+                                        style: const TextStyle(fontSize: 16),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _countryCode,
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textDark,
+                                        ),
+                                      ),
+                                      const Icon(
+                                        Icons.arrow_drop_down,
+                                        size: 18,
+                                        color: AppColors.textMedium,
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
                               prefixIconConstraints:

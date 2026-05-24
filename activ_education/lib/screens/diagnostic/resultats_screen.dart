@@ -5,6 +5,7 @@ import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
+import '../explorer/fiche_detail_screen.dart';
 
 class ResultatsScreen extends StatefulWidget {
   final double? score;
@@ -203,7 +204,7 @@ class _ResultatsScreenState extends State<ResultatsScreen>
                   // Score Card avec animation
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                       child: FadeTransition(
                         opacity: _fadeAnim,
                         child: ScaleTransition(
@@ -323,7 +324,7 @@ class _ResultatsScreenState extends State<ResultatsScreen>
                     Text(
                       '$intScore',
                       style: TextStyle(
-                        fontFamily: 'Nunito',
+                        fontFamily: 'Inter',
                         fontSize: 48,
                         fontWeight: FontWeight.w800,
                         color: accentColor,
@@ -332,7 +333,7 @@ class _ResultatsScreenState extends State<ResultatsScreen>
                     Text(
                       '%',
                       style: TextStyle(
-                        fontFamily: 'Nunito',
+                        fontFamily: 'Inter',
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: accentColor.withValues(alpha: 0.7),
@@ -411,8 +412,12 @@ class _RecommandationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // TODO: Naviguer vers détail de la filière
-        // Navigator.pushNamed(context, AppRoutes.filiereDetail, arguments: filiere.trackingId);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => FicheDetailScreen(fiche: filiere),
+          ),
+        );
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),

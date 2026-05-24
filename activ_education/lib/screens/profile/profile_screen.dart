@@ -3,6 +3,8 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
+import '../../widgets/skeleton_widget.dart';
+import '../errors/empty_content_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -15,154 +17,361 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _api = ApiService();
 
   EleveResponse? _eleve;
+  List<FavoriResponse> _favoris = [];
+  List<HistoriqueResponse> _historique = [];
+  int _totalFavoris = 0;
   bool _isLoading = true;
-  bool _isEditing = false;
-  final _formKey = GlobalKey<FormState>();
-
-  TextEditingController? _nomController;
-  TextEditingController? _prenomController;
-  TextEditingController? _emailController;
-  TextEditingController? _telephoneController;
-  TextEditingController? _etablissementController;
-  TextEditingController? _filiereController;
-  String? _selectedNiveau;
-  String? _selectedEtablissement;
-  String? _selectedFiliere;
-
-  final List<String> _niveaux = [
-    '6ème', '5ème', '4ème', '3ème',
-    'Seconde', 'Première', 'Terminale',
-    'Licence 1', 'Licence 2', 'Licence 3',
-    'Master 1', 'Master 2',
-  ];
-
-  List<String> _etablissements = [];
-  List<String> _filieres = [];
-  bool _isLoadingDropdowns = false;
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
-    _loadDropdowns();
+    _loadAll();
   }
 
-  Future<void> _loadDropdowns() async {
-    try {
-      setState(() => _isLoadingDropdowns = true);
-      final etablissements = await _api.getEtablissementsList();
-      final filieres = await _api.getFilieresList();
-      setState(() {
-        _etablissements = etablissements;
-        _filieres = filieres;
-        _isLoadingDropdowns = false;
-      });
-    } catch (_) {
-      setState(() => _isLoadingDropdowns = false);
-    }
-  }
-
-  @override
-  void dispose() {
-    _nomController?.dispose();
-    _prenomController?.dispose();
-    _emailController?.dispose();
-    _telephoneController?.dispose();
-    _etablissementController?.dispose();
-    _filiereController?.dispose();
-    super.dispose();
+  Future<void> _loadAll() async {
+    await Future.wait([_loadProfile(), _loadFavoris(), _loadHistorique()]);
   }
 
   Future<void> _loadProfile() async {
     try {
-      setState(() => _isLoading = true);
       final trackingId = await _api.getTrackingId();
       if (trackingId == null) {
         setState(() => _isLoading = false);
         return;
       }
-
       final eleve = await _api.getEleve(trackingId);
-
-      _nomController = TextEditingController(text: eleve.nom);
-      _prenomController = TextEditingController(text: eleve.prenom);
-      _emailController = TextEditingController(text: eleve.email);
-      _telephoneController = TextEditingController(text: eleve.telephone ?? '');
-      _selectedNiveau = eleve.niveauEtude;
-      _selectedEtablissement = eleve.etablissementActuel;
-      _selectedFiliere = eleve.filiere;
-
-      setState(() {
-        _eleve = eleve;
-        _isLoading = false;
-      });
-    } catch (e) {
+      setState(() { _eleve = eleve; _isLoading = false; });
+    } catch (_) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${_api.handleError(e as dynamic)}')),
-        );
-      }
     }
   }
 
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
+  Future<void> _loadFavoris() async {
     try {
-      setState(() => _isLoading = true);
       final trackingId = await _api.getTrackingId();
       if (trackingId == null) return;
+      final page = await _api.explorer.getFavorisUtilisateur(trackingId, page: 0, size: 3);
+      setState(() { _favoris = page.content; _totalFavoris = page.totalElements; });
+    } catch (_) {}
+  }
 
-      final request = EleveRequest(
-        nom: _nomController!.text,
-        prenom: _prenomController!.text,
-        email: _emailController!.text,
-        telephone: _telephoneController!.text.isEmpty ? null : _telephoneController!.text,
-        motDePasse: 'placeholder', // Le backend ne devrait pas exiger le mdp pour update
-        niveauEtude: _selectedNiveau,
-        etablissementActuel: _selectedEtablissement,
-        filiere: _selectedFiliere,
-        typeApprenant: _getTypeApprenantFromNiveau(_selectedNiveau),
-        matieresPreferees: _eleve?.matieresPreferees,
-        styleApprentissage: _eleve?.styleApprentissage,
+  Future<void> _loadHistorique() async {
+    try {
+      final trackingId = await _api.getTrackingId();
+      if (trackingId == null) return;
+      final res = await _api.dio.get(
+        '/api/v1/utilisateurs/$trackingId/historique',
+        queryParameters: {'page': 0, 'size': 3},
       );
+      final page = PageResponse<HistoriqueResponse>.fromJson(
+        res.data, (json) => HistoriqueResponse.fromJson(json),
+      );
+      setState(() => _historique = page.content);
+    } catch (_) {}
+  }
 
-      await _api.modifierEleve(trackingId, request);
+  bool get _isLoggedIn => _eleve != null;
 
-      setState(() {
-        _isEditing = false;
-        _isLoading = false;
-      });
+  String get _initials {
+    if (_eleve == null) return '??';
+    return '${_eleve!.prenom[0]}${_eleve!.nom[0]}';
+  }
 
+  String get _nomComplet => _eleve?.nomComplet ?? '';
+
+  String get _sousTitre {
+    final e = _eleve;
+    if (e == null) return '';
+    final parts = <String>[_typeApprenantLabel(e.typeApprenant)];
+    if (e.niveauEtude != null && e.niveauEtude!.isNotEmpty) parts.add(e.niveauEtude!);
+    if (e.filiere != null && e.filiere!.isNotEmpty) parts.add(e.filiere!);
+    return parts.join(' — ');
+  }
+
+  String _typeApprenantLabel(String type) {
+    switch (type) {
+      case 'ECOLIER': return 'Écolier';
+      case 'COLLEGIEN': return 'Collégien';
+      case 'LYCEEN': return 'Lycéen';
+      case 'ETUDIANT': return 'Étudiant';
+      case 'PROFESSIONNEL': return 'Professionnel';
+      default: return 'Apprenant';
+    }
+  }
+
+  int get _completionPercent {
+    final e = _eleve;
+    if (e == null) return 0;
+    int filled = 0;
+    if (e.etablissementActuel != null && e.etablissementActuel!.isNotEmpty) filled++;
+    if (e.matieresPreferees != null && e.matieresPreferees!.isNotEmpty) filled++;
+    return ((filled / 5) * 100).round();
+  }
+
+  List<String> _getChampsManquants() {
+    final e = _eleve;
+    if (e == null) return [];
+    final missing = <String>[];
+    if (e.etablissementActuel == null || e.etablissementActuel!.isEmpty) {
+      missing.add('Établissement');
+    }
+    if (e.matieresPreferees == null || e.matieresPreferees!.isEmpty) {
+      missing.add("Centres d'intérêt");
+    }
+    missing.add('Notes Terminale');
+    missing.add('Série Bac');
+    missing.add('Photo de profil');
+    return missing;
+  }
+
+  String get _matieresLabel {
+    final e = _eleve;
+    if (e == null || e.matieresPreferees == null || e.matieresPreferees!.isEmpty) {
+      return 'Non renseigné';
+    }
+    return e.matieresPreferees!.join(', ');
+  }
+
+  String _relativeDate(DateTime? date) {
+    if (date == null) return '';
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 30) return 'Il y a ${(diff.inDays / 30).round()} mois';
+    if (diff.inDays > 7) return 'Il y a ${(diff.inDays / 7).round()} sem';
+    if (diff.inDays > 0) return 'Il y a ${diff.inDays}j';
+    if (diff.inHours > 0) return 'Il y a ${diff.inHours}h';
+    if (diff.inMinutes > 0) return 'Il y a ${diff.inMinutes}min';
+    return "À l'instant";
+  }
+
+  Future<void> _refreshProfile() async {
+    final trackingId = await _api.getTrackingId();
+    if (trackingId == null) return;
+    final eleve = await _api.getEleve(trackingId);
+    setState(() { _eleve = eleve; });
+  }
+
+  // ─── MODALS ─────────────────────────────────────────────────────────────
+
+  Future<void> _showEditParcours() async {
+    final niveauCtrl = TextEditingController(text: _eleve?.niveauEtude ?? '');
+    final filiereCtrl = TextEditingController(text: _eleve?.filiere ?? '');
+    final result = await _showEditBottomSheet(
+      title: 'Mon parcours',
+      children: [
+        _buildSheetField('Niveau', niveauCtrl),
+        const SizedBox(height: 12),
+        _buildSheetField('Filière', filiereCtrl),
+      ],
+    );
+    if (result == true) {
+      await _updateEleve(niveau: niveauCtrl.text, filiere: filiereCtrl.text);
+    }
+    niveauCtrl.dispose();
+    filiereCtrl.dispose();
+  }
+
+  Future<void> _showEditEtablissement() async {
+    final ctrl = TextEditingController(text: _eleve?.etablissementActuel ?? '');
+    final result = await _showEditBottomSheet(
+      title: 'Mon établissement',
+      children: [_buildSheetField('Établissement', ctrl)],
+    );
+    if (result == true) {
+      await _updateEleve(etablissement: ctrl.text);
+    }
+    ctrl.dispose();
+  }
+
+  Future<void> _showEditInterets() async {
+    final current = _eleve?.matieresPreferees?.join(', ') ?? '';
+    final ctrl = TextEditingController(text: current);
+    final result = await _showEditBottomSheet(
+      title: "Mes centres d'intérêt",
+      children: [
+        _buildSheetField(
+          'Matières préférées (séparées par des virgules)',
+          ctrl,
+        ),
+      ],
+    );
+    if (result == true) {
+      final matieres = ctrl.text
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+      await _updateEleve(matieresPreferees: matieres);
+    }
+    ctrl.dispose();
+  }
+
+  Future<bool?> _showEditBottomSheet({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        return StatefulBuilder(builder: (ctx, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: AppTextStyles.headingMedium),
+                const SizedBox(height: 20),
+                ...children,
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: saving
+                        ? null
+                        : () {
+                            setSheetState(() => saving = true);
+                            Navigator.pop(ctx, true);
+                          },
+                    child: saving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white,
+                            ),
+                          )
+                        : const Text(
+                            'Enregistrer',
+                            style: TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+
+  Widget _buildSheetField(String label, TextEditingController controller) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: AppTextStyles.label),
+        const SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          style: AppTextStyles.bodyLarge,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: AppColors.backgroundGrey,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.cardBorder),
+            ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14, vertical: 12,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _updateEleve({
+    String? niveau,
+    String? filiere,
+    String? etablissement,
+    List<String>? matieresPreferees,
+  }) async {
+    final e = _eleve;
+    if (e == null) return;
+    try {
+      final trackingId = await _api.getTrackingId();
+      if (trackingId == null) return;
+      final req = EleveRequest(
+        nom: e.nom,
+        prenom: e.prenom,
+        email: e.email,
+        telephone: e.telephone,
+        motDePasse: 'placeholder',
+        niveauEtude: niveau ?? e.niveauEtude,
+        filiere: filiere ?? e.filiere,
+        etablissementActuel: etablissement ?? e.etablissementActuel,
+        typeApprenant: TypeApprenant.values.firstWhere(
+          (t) => t.name == e.typeApprenant,
+          orElse: () => TypeApprenant.AUTRE,
+        ),
+        matieresPreferees: matieresPreferees ?? e.matieresPreferees,
+        styleApprentissage: e.styleApprentissage,
+      );
+      await _api.modifierEleve(trackingId, req);
+      await _refreshProfile();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil mis à jour avec succès')),
+          const SnackBar(content: Text('Profil mis à jour')),
         );
       }
-    } catch (e) {
-      setState(() => _isLoading = false);
+    } catch (err) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${_api.handleError(e as dynamic)}')),
+          SnackBar(content: Text('Erreur: ${_api.handleError(err)}')),
         );
       }
     }
   }
 
-  TypeApprenant _getTypeApprenantFromNiveau(String? niveau) {
-    if (niveau == null) return TypeApprenant.AUTRE;
-    if (['6ème', '5ème', '4ème', '3ème'].contains(niveau)) {
-      return TypeApprenant.COLLEGIEN;
-    }
-    if (['Seconde', 'Première', 'Terminale'].contains(niveau)) {
-      return TypeApprenant.LYCEEN;
-    }
-    if (niveau.contains('Licence') || niveau.contains('Master')) {
-      return TypeApprenant.ETUDIANT;
-    }
-    return TypeApprenant.AUTRE;
+  void _showDocuments() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Documents — à venir')),
+    );
   }
+
+  void _uploadPhoto() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Upload photo à venir')),
+    );
+  }
+
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Se déconnecter'),
+        content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Se déconnecter'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _api.logout();
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+          context, AppRoutes.login, (route) => false,
+        );
+      }
+    }
+  }
+
+  // ─── BUILD ──────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -170,400 +379,312 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: AppColors.backgroundGrey,
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _eleve == null
+            ? const SkeletonListPage()
+            : !_isLoggedIn
                 ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Utilisateur non connecté'),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                              context, AppRoutes.login, (route) => false),
-                          child: const Text('Se connecter'),
+                    child: EmptyContentScreen(
+                      icon: Icons.person_off_rounded,
+                      title: 'Connecte-toi pour voir ton profil',
+                      actionLabel: 'Se connecter',
+                      onAction: () => Navigator.pushNamedAndRemoveUntil(
+                        context, AppRoutes.login, (route) => false,
+                      ),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadAll,
+                    child: CustomScrollView(
+                      slivers: [
+                        _buildHeaderSliver(),
+                        SliverToBoxAdapter(child: _buildCompletionCard()),
+                        SliverToBoxAdapter(child: _buildSections()),
+                        if (_favoris.isNotEmpty)
+                          SliverToBoxAdapter(child: _buildFavorisSection()),
+                        if (_historique.isNotEmpty)
+                          SliverToBoxAdapter(child: _buildHistoriqueSection()),
+                        SliverToBoxAdapter(child: _buildLogoutSection()),
+                        const SliverToBoxAdapter(
+                          child: SizedBox(height: 32),
                         ),
                       ],
                     ),
-                  )
-                : CustomScrollView(
-                slivers: [
-                  // Header
-                  SliverToBoxAdapter(
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
-                      child: Row(
-                        children: [
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: AppColors.backgroundGrey,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.arrow_back_ios_new_rounded,
-                                  color: AppColors.textDark, size: 16),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Mon Profil',
-                            style: AppTextStyles.headingMedium.copyWith(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: () {
-                              if (_isEditing) {
-                                _saveProfile();
-                              } else {
-                                setState(() => _isEditing = true);
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: _isEditing
-                                    ? AppColors.primary
-                                    : AppColors.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _isEditing ? Icons.check_rounded : Icons.edit_rounded,
-                                    color: _isEditing ? Colors.white : AppColors.primary,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    _isEditing ? 'Enregistrer' : 'Modifier',
-                                    style: AppTextStyles.caption.copyWith(
-                                      color: _isEditing
-                                          ? Colors.white
-                                          : AppColors.primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-
-                  // Avatar section
-                  SliverToBoxAdapter(
-                    child: Container(
-                      color: Colors.white,
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.primary,
-                                width: 3,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                '${_eleve!.prenom[0]}${_eleve!.nom[0]}',
-                                style: AppTextStyles.displayMedium.copyWith(
-                                  color: AppColors.primary,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            _eleve!.nomComplet,
-                            style: AppTextStyles.headingLarge.copyWith(
-                              color: AppColors.textDark,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _eleve!.typeApprenant,
-                              style: AppTextStyles.caption.copyWith(
-                                color: AppColors.accent,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // Form section
-                  SliverPadding(
-                    padding: const EdgeInsets.all(20),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            children: [
-                              _buildTextField(
-                                label: 'Prénom',
-                                controller: _prenomController!,
-                                enabled: _isEditing,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                label: 'Nom',
-                                controller: _nomController!,
-                                enabled: _isEditing,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                label: 'Email',
-                                controller: _emailController!,
-                                enabled: _isEditing,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                              const SizedBox(height: 16),
-                              _buildTextField(
-                                label: 'Téléphone',
-                                controller: _telephoneController!,
-                                enabled: _isEditing,
-                                keyboardType: TextInputType.phone,
-                                prefixText: '+228 ',
-                              ),
-                              const SizedBox(height: 16),
-                              _buildDropdownField(
-                                label: 'Niveau d\'étude',
-                                value: _selectedNiveau,
-                                items: _niveaux,
-                                enabled: _isEditing,
-                                onChanged: (v) => setState(() => _selectedNiveau = v),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildDropdownField(
-                                label: 'Établissement',
-                                value: _selectedEtablissement,
-                                items: _etablissements,
-                                enabled: _isEditing,
-                                isLoading: _isLoadingDropdowns,
-                                onChanged: (v) => setState(() => _selectedEtablissement = v),
-                              ),
-                              const SizedBox(height: 16),
-                              _buildDropdownField(
-                                label: 'Filière',
-                                value: _selectedFiliere,
-                                items: _filieres,
-                                enabled: _isEditing,
-                                isLoading: _isLoadingDropdowns,
-                                onChanged: (v) => setState(() => _selectedFiliere = v),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Settings options
-                        _buildSettingsSection(),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
       ),
     );
   }
 
-  Widget _buildTextField({
-    required String label,
-    required TextEditingController controller,
-    required bool enabled,
-    TextInputType? keyboardType,
-    String? prefixText,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.label),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          enabled: enabled,
-          keyboardType: keyboardType,
-          style: AppTextStyles.bodyLarge.copyWith(
-            color: enabled ? AppColors.textDark : AppColors.textMedium,
-          ),
-          decoration: InputDecoration(
-            prefixText: prefixText,
-            filled: true,
-            fillColor: enabled ? Colors.white : AppColors.backgroundGrey,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.cardBorder, width: 1.5),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.cardBorder, width: 1.5),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-            ),
+  // ─── HEADER ──────────────────────────────────────────────────────────────
+
+  Widget _buildHeaderSliver() {
+    return SliverToBoxAdapter(
+      child: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildDropdownField({
-    required String label,
-    required String? value,
-    required List<String> items,
-    required bool enabled,
-    bool isLoading = false,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.label),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: enabled ? Colors.white : AppColors.backgroundGrey,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: enabled ? AppColors.cardBorder : AppColors.textLight,
-              width: 1.5,
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: isLoading
-              ? const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                )
-              : DropdownButtonFormField<String>(
-                  value: items.contains(value) ? value : null,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  hint: Text(
-                    'Sélectionner',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textLight,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white, size: 16,
                     ),
                   ),
-                  items: items
-                      .map((item) => DropdownMenuItem(
-                            value: item,
-                            child: Text(item),
-                          ))
-                      .toList(),
-                  onChanged: enabled ? onChanged : null,
-                  icon: const Icon(Icons.keyboard_arrow_down_rounded,
-                      color: AppColors.textMedium),
                 ),
+                const Spacer(),
+                const Text(
+                  'PROFIL',
+                  style: TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                    letterSpacing: 1.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '$_completionPercent%',
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Stack(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _initials,
+                      style: const TextStyle(
+                        fontFamily: 'Poppins',
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _uploadPhoto,
+                    child: Container(
+                      width: 22,
+                      height: 22,
+                      decoration: const BoxDecoration(
+                        color: AppColors.accent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Colors.white, size: 12,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _nomComplet,
+              style: const TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _sousTitre,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: Colors.white.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(2),
+              child: LinearProgressIndicator(
+                value: _completionPercent / 100,
+                backgroundColor: Colors.white.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
+                minHeight: 4,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildSettingsSection() {
+  // ─── COMPLETION CARD ────────────────────────────────────────────────────
+
+  Widget _buildCompletionCard() {
+    if (_completionPercent >= 100) return const SizedBox.shrink();
+    final missing = _getChampsManquants();
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            "Complète ton profil pour de meilleures recommandations",
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 32,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: missing.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (_, i) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF8EC),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  missing[i],
+                  style: const TextStyle(
+                    fontFamily: 'Inter',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              height: 36,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Compléter',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── SECTIONS ───────────────────────────────────────────────────────────
+
+  Widget _buildSections() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
-          _buildSettingsItem(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            subtitle: 'Gérer les alertes',
-            onTap: () {},
+          _sectionItem(
+            icon: Icons.school,
+            title: 'Mon parcours',
+            subtitle: '${_eleve?.niveauEtude ?? ''} ${_eleve?.filiere ?? ''}'
+                .trim(),
+            onTap: _showEditParcours,
           ),
           const Divider(height: 1, color: AppColors.cardBorder),
-          _buildSettingsItem(
-            icon: Icons.lock_outline_rounded,
-            title: 'Mot de passe',
-            subtitle: 'Changer le mot de passe',
-            onTap: () {},
+          _sectionItem(
+            icon: Icons.business,
+            title: 'Mon établissement',
+            subtitle: _eleve?.etablissementActuel ?? 'Non renseigné',
+            onTap: _showEditEtablissement,
           ),
           const Divider(height: 1, color: AppColors.cardBorder),
-          _buildSettingsItem(
-            icon: Icons.help_outline_rounded,
-            title: 'Aide & Support',
-            subtitle: 'FAQ et contact',
-            onTap: () {},
+          _sectionItem(
+            icon: Icons.star_outline,
+            title: "Mes centres d'intérêt",
+            subtitle: _matieresLabel,
+            onTap: _showEditInterets,
           ),
           const Divider(height: 1, color: AppColors.cardBorder),
-          _buildSettingsItem(
-            icon: Icons.info_outline_rounded,
-            title: 'À propos',
-            subtitle: 'Version 1.0.0',
-            onTap: () {},
+          _sectionItem(
+            icon: Icons.bar_chart,
+            title: 'Mes notes',
+            subtitle: '${_eleve?.niveauEtude ?? ''} — Saisies',
+            onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            height: 54,
-            child: OutlinedButton(
-              onPressed: () async {
-                await _api.logout();
-                if (mounted) {
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    AppRoutes.login,
-                    (route) => false,
-                  );
-                }
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red,
-                side: const BorderSide(color: Colors.red, width: 1.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Text(
-                'Se déconnecter',
-                style: TextStyle(
-                  fontFamily: 'Nunito',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.red,
-                ),
-              ),
-            ),
+          const Divider(height: 1, color: AppColors.cardBorder),
+          _sectionItem(
+            icon: Icons.folder_open,
+            title: 'Mes documents',
+            subtitle: 'X fichiers (bulletins)',
+            onTap: _showDocuments,
           ),
-          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsItem({
+  Widget _sectionItem({
     required IconData icon,
     required String title,
     required String subtitle,
@@ -575,20 +696,213 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.1),
+          color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Icon(icon, color: AppColors.primary, size: 20),
       ),
       title: Text(
         title,
-        style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w600),
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textDark,
+        ),
       ),
       subtitle: Text(
         subtitle,
-        style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+        style: const TextStyle(
+          fontFamily: 'Inter',
+          fontSize: 12,
+          color: AppColors.textMedium,
+        ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
+      trailing: const Icon(
+        Icons.chevron_right_rounded,
+        color: AppColors.textLight,
+      ),
+    );
+  }
+
+  // ─── FAVORIS ────────────────────────────────────────────────────────────
+
+  Widget _buildFavorisSection() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mes favoris',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: _favoris.map((f) {
+              return Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.bookmark_outline,
+                        color: AppColors.primary, size: 20,
+                      ),
+                      const SizedBox(height: 4),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: Text(
+                          f.ficheTitre ?? 'Fiche',
+                          textAlign: TextAlign.center,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, AppRoutes.favorites),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Voir tous mes favoris ($_totalFavoris) →',
+                style: const TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── HISTORIQUE ─────────────────────────────────────────────────────────
+
+  Widget _buildHistoriqueSection() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mon historique',
+            style: TextStyle(
+              fontFamily: 'Inter',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._historique.map((h) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.history_rounded,
+                  size: 20, color: AppColors.textMedium,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    h.action,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textDark,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  _relativeDate(h.createdAt),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ],
+            ),
+          )),
+          GestureDetector(
+            onTap: () {},
+            child: const Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                'Voir tout →',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── LOGOUT ─────────────────────────────────────────────────────────────
+
+  Widget _buildLogoutSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+      child: OutlinedButton(
+        onPressed: _logout,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.red,
+          side: const BorderSide(color: Colors.red, width: 1.5),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+        child: const Text(
+          'Se déconnecter',
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
     );
   }
 }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
+import '../../widgets/skeleton_widget.dart';
+import '../errors/empty_content_screen.dart';
 
 class FaqScreen extends StatefulWidget {
   const FaqScreen({super.key});
@@ -93,7 +95,7 @@ class _FaqScreenState extends State<FaqScreen> {
           // Content
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const SkeletonListPage()
                 : _filteredFaqs.isEmpty
                     ? _buildEmptyState()
                     : _buildFaqList(),
@@ -181,7 +183,7 @@ class _FaqScreenState extends State<FaqScreen> {
           child: Text(
             label,
             style: TextStyle(
-              fontFamily: 'Nunito',
+              fontFamily: 'Inter',
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
               color: isSelected ? Colors.white : AppColors.textMedium,
@@ -260,23 +262,10 @@ class _FaqScreenState extends State<FaqScreen> {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.search_off_rounded, size: 80, color: AppColors.textLight),
-          const SizedBox(height: 16),
-          Text(
-            'Aucun résultat trouvé',
-            style: AppTextStyles.headingSmall.copyWith(color: AppColors.textMedium),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Essayez avec d\'autres mots clés',
-            style: AppTextStyles.bodyMedium,
-          ),
-        ],
-      ),
+    return const EmptyContentScreen(
+      icon: Icons.search_off_rounded,
+      title: 'Aucun résultat trouvé',
+      subtitle: 'Essayez avec d\'autres mots clés',
     );
   }
 }

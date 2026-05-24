@@ -57,6 +57,32 @@ class ExplorerService extends BaseService {
     return List<String>.from(res.data);
   }
 
+  // Recherche
+  Future<List<RechercheGlobaleResponse>> rechercherGlobalement(String phrase, {int limite = 10}) async {
+    final res = await dio.get('/api/v1/bibliotheque/recherche-fiche-ia/globale', queryParameters: {'phrase': phrase, 'limite': limite});
+    return (res.data as List).map((e) => RechercheGlobaleResponse.fromJson(e)).toList();
+  }
+
+  Future<PageResponse<FicheSerieResponse>> rechercherSeries(String motCle, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/bibliotheque/series/recherche', queryParameters: {'motCle': motCle, 'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => FicheSerieResponse.fromJson(json));
+  }
+
+  Future<PageResponse<FicheFiliereResponse>> rechercherFilieres(String motCle, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/bibliotheque/filieres/recherche', queryParameters: {'motCle': motCle, 'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => FicheFiliereResponse.fromJson(json));
+  }
+
+  Future<PageResponse<FicheMetierResponse>> rechercherMetiers(String motCle, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/bibliotheque/metiers/recherche', queryParameters: {'motCle': motCle, 'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => FicheMetierResponse.fromJson(json));
+  }
+
+  Future<PageResponse<FicheEtablissementResponse>> rechercherEtablissements(String motCle, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/bibliotheque/etablissements/recherche', queryParameters: {'motCle': motCle, 'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => FicheEtablissementResponse.fromJson(json));
+  }
+
   Future<List<String>> getEtablissementsList() async {
     try {
       final res = await listerEtablissements(page: 0, size: 100);

@@ -114,7 +114,7 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontFamily: 'Nunito',
+                fontFamily: 'Inter',
                 fontSize: 10,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
                 color: isActive ? AppColors.primary : AppColors.textLight,

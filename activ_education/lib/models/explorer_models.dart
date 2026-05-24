@@ -190,6 +190,31 @@ class FicheEtablissementResponse extends FicheBase {
       );
 }
 
+class RechercheGlobaleResponse {
+  final String trackingId;
+  final String typeResultat;
+  final String titre;
+  final String resume;
+  final String? imageCouverture;
+
+  RechercheGlobaleResponse({
+    required this.trackingId,
+    required this.typeResultat,
+    required this.titre,
+    required this.resume,
+    this.imageCouverture,
+  });
+
+  factory RechercheGlobaleResponse.fromJson(Map<String, dynamic> json) =>
+      RechercheGlobaleResponse(
+        trackingId: json['trackingId']?.toString() ?? '',
+        typeResultat: json['typeResultat'] ?? '',
+        titre: json['titre'] ?? '',
+        resume: json['resume'] ?? '',
+        imageCouverture: json['imageCouverture'],
+      );
+}
+
 class EntreeFAQResponse {
   final String trackingId;
   final String question;

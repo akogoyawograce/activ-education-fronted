@@ -26,6 +26,7 @@ class ApiService extends BaseService {
   // ─── PROXY METHODS (Backward Compatibility) ────────────────────────────────
 
   // Auth & Profile
+  Future<TokenResponse> login(String email, String password) => auth.login(email, password);
   Future<void> saveToken(String token) => auth.saveToken(token);
   Future<void> saveUserData({required String trackingId, required String role}) => 
       auth.saveUserData(trackingId: trackingId, role: role);
@@ -37,6 +38,7 @@ class ApiService extends BaseService {
     final res = await dio.put('/api/v1/eleves/$id', data: req.toJson());
     return EleveResponse.fromJson(res.data);
   }
+  Future<ParentResponse> getParent(String id) => auth.getParent(id);
   Future<ConseillerResponse> getConseiller(String id) => auth.getConseiller(id);
   Future<List<ConseillerResponse>> getConseillers({int page = 0, int size = 100}) => auth.getConseillers(page: page, size: size);
   
@@ -55,6 +57,10 @@ class ApiService extends BaseService {
   Future<List<String>> getEtablissementsList() => explorer.getEtablissementsList();
   Future<List<String>> getFilieresList() => explorer.getFilieresList();
 
+  // Recherche
+  Future<List<RechercheGlobaleResponse>> rechercherGlobalement(String phrase, {int limite = 10}) =>
+      explorer.rechercherGlobalement(phrase, limite: limite);
+
   // Diagnostic
   Future<PageResponse<QuizResponse>> listerQuiz({int page = 0, int size = 10}) => diagnostic.listerQuizzes(page: page, size: size);
   Future<QuizResponse> getQuiz(String id) async {
@@ -67,7 +73,6 @@ class ApiService extends BaseService {
   Future<PageResponse<ResultatDiagnosticResponse>> getResultatsEleve(String id, {int page = 0, int size = 10}) =>
       diagnostic.getResultatsEleve(id, page: page, size: size);
   Future<ResultatDiagnosticResponse?> getDernierResultat(String eId, String qId) => diagnostic.getDernierResultat(eId, qId);
-
   // Interaction
   Future<MessageResponse> envoyerMessage(String expId, MessageRequest req) async {
     final res = await dio.post('/api/v1/utilisateurs/$expId/messages', data: req.toJson());

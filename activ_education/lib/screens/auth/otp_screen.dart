@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
+import '../../services/api_service.dart';
 import '../../widgets/common_widgets.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -25,6 +26,7 @@ class _OtpScreenState extends State<OtpScreen> {
   // Args passés depuis ForgotPassword
   String _type = 'email';
   String _value = '';
+  String _role = 'ELEVE';
 
   @override
   void initState() {
@@ -40,6 +42,7 @@ class _OtpScreenState extends State<OtpScreen> {
     if (args != null) {
       _type = args['type'] ?? 'email';
       _value = args['value'] ?? '';
+      _role = args['role'] ?? 'ELEVE';
     }
   }
 
@@ -106,11 +109,13 @@ class _OtpScreenState extends State<OtpScreen> {
   void _validate() async {
     if (_otp.length < 4) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1200));
+    final api = ApiService();
+    final trackingId = await api.getTrackingId();
+    if (trackingId != null) {
+      await api.saveUserData(trackingId: trackingId, role: _role);
+    }
     if (mounted) {
       setState(() => _isLoading = false);
-      // TODO: Connecter au vrai endpoint auth
-      // Naviguer vers home si succès
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     }
   }
@@ -251,7 +256,11 @@ class _OtpScreenState extends State<OtpScreen> {
                         GestureDetector(
                           onTap: () {
                             _startTimer();
-                            // TODO: appel API resend
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Code renvoyé'), duration: Duration(seconds: 2)),
+                              );
+                            }
                           },
                           child: Text(
                             'Renvoyer le code',

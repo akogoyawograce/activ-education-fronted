@@ -26,7 +26,16 @@ class AppRoutes {
   static const String chat = '/chat';
   static const String notifications = '/notifications';
   static const String rdv = '/rdv';
+  static const String enfantSuivi = '/enfant-suivi';
+  static const String diagnosticEnfant = '/diagnostic-enfant';
+  static const String rdvList = '/rdv-list';
 
   // Utilitaires
   static const String ficheDetail = '/fiche-detail';
+  static const String favorites = '/favorites';
+  static const String search = '/search';
+
+  // États
+  static const String notFound = '/404';
+  static const String networkError = '/network-error';
 }

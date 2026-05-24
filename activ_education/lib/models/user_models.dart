@@ -2,6 +2,45 @@
 
 enum TypeApprenant { ECOLIER, COLLEGIEN, LYCEEN, ETUDIANT, PROFESSIONNEL, AUTRE }
 
+class LoginRequest {
+  final String email;
+  final String motDePasse;
+
+  LoginRequest({required this.email, required this.motDePasse});
+
+  Map<String, dynamic> toJson() => {
+        'email': email,
+        'motDePasse': motDePasse,
+      };
+}
+
+class TokenResponse {
+  final String accessToken;
+  final String refreshToken;
+  final String trackingId;
+  final String typeUtilisateur;
+  final List<String> roles;
+  final int expiresInMs;
+
+  TokenResponse({
+    required this.accessToken,
+    required this.refreshToken,
+    required this.trackingId,
+    required this.typeUtilisateur,
+    required this.roles,
+    required this.expiresInMs,
+  });
+
+  factory TokenResponse.fromJson(Map<String, dynamic> json) => TokenResponse(
+        accessToken: json['accessToken'] ?? '',
+        refreshToken: json['refreshToken'] ?? '',
+        trackingId: json['trackingId'] ?? '',
+        typeUtilisateur: json['typeUtilisateur'] ?? '',
+        roles: List<String>.from(json['roles'] ?? []),
+        expiresInMs: json['expiresInMs'] ?? 0,
+      );
+}
+
 class EleveRequest {
   final String nom;
   final String prenom;

@@ -49,6 +49,118 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
     ),
   ];
 
+  void _showSuccessDialog(String trackingId) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+            SizedBox(width: 10),
+            Text('Inscription réussie !', style: AppTextStyles.headingMedium),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Voici votre identifiant unique. Conservez-le précieusement pour vous connecter.',
+              style: AppTextStyles.bodyMedium,
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundGrey,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: SelectableText(
+                trackingId,
+                style: AppTextStyles.label.copyWith(
+                  color: AppColors.primary,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Vous pouvez aussi utiliser votre email pour vous connecter.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                Navigator.pushNamedAndRemoveUntil(
+                    context, AppRoutes.home, (route) => false);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text("C'est parti !",
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRegisterUnavailable() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline_rounded, color: AppColors.accent, size: 28),
+            SizedBox(width: 10),
+            Expanded(child: Text('Inscription indisponible', style: AppTextStyles.headingMedium)),
+          ],
+        ),
+        content: const Text(
+          "Seule l'inscription en tant que Parent est disponible. "
+          "Pour créer un compte élève, contactez un administrateur.",
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("Fermer"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _roleString(UserRole role) {
+    switch (role) {
+      case UserRole.parent:
+        return 'PARENT';
+      case UserRole.collegien:
+      case UserRole.lyceen:
+      case UserRole.etudiant:
+      case UserRole.reconversion:
+      case UserRole.decrocheur:
+        return 'ELEVE';
+    }
+  }
+
   void _finish() async {
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
@@ -59,64 +171,90 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
 
     setState(() => _isLoading = true);
     final api = ApiService();
+    final userRole = args['role'] as UserRole;
+    final roleStr = _roleString(userRole);
 
     try {
-      // Mapper UserRole vers TypeApprenant
-      final userRole = args['role'] as UserRole?;
-      TypeApprenant typeApprenant = TypeApprenant.AUTRE;
-      if (userRole == UserRole.collegien)
-        typeApprenant = TypeApprenant.COLLEGIEN;
-      else if (userRole == UserRole.lyceen)
-        typeApprenant = TypeApprenant.LYCEEN;
-      else if (userRole == UserRole.etudiant)
-        typeApprenant = TypeApprenant.ETUDIANT;
-      else if (userRole == UserRole.reconversion)
-        typeApprenant = TypeApprenant.PROFESSIONNEL;
+      String trackingId;
 
-      // Création de la requête
-      final request = EleveRequest(
-        nom: args['nom'] ?? '',
-        prenom: args['prenom'] ?? '',
-        email: args['email'] ?? '',
-        telephone: args['phone'],
-        motDePasse: args['password'] ?? '',
-        niveauEtude: args['class'],
-        typeApprenant: typeApprenant,
-        etablissementActuel: args[
-            'city'], // Utilisation de la ville comme placeholder pour l'instant
-        matieresPreferees: _selectedMatieres.toList(),
-        styleApprentissage: _selectedStyle,
-      );
+      if (userRole == UserRole.parent) {
+        final request = ParentRequest(
+          nom: args['nom'] ?? '',
+          prenom: args['prenom'] ?? '',
+          email: args['email'] ?? '',
+          telephone: args['phone'],
+          motDePasse: args['password'] ?? '',
+        );
+        debugPrint('Inscription parent - requête: ${request.toJson()}');
+        final response = await api.auth.inscrireParent(request);
+        trackingId = response.trackingId;
+      } else {
+        TypeApprenant typeApprenant = TypeApprenant.AUTRE;
+        if (userRole == UserRole.collegien) {
+          typeApprenant = TypeApprenant.COLLEGIEN;
+        } else if (userRole == UserRole.lyceen) {
+          typeApprenant = TypeApprenant.LYCEEN;
+        } else if (userRole == UserRole.etudiant) {
+          typeApprenant = TypeApprenant.ETUDIANT;
+        } else if (userRole == UserRole.reconversion) {
+          typeApprenant = TypeApprenant.PROFESSIONNEL;
+        }
 
-      debugPrint('Inscription élève - requête: ${request.toJson()}');
+        final request = EleveRequest(
+          nom: args['nom'] ?? '',
+          prenom: args['prenom'] ?? '',
+          email: args['email'] ?? '',
+          telephone: args['phone'],
+          motDePasse: args['password'] ?? '',
+          niveauEtude: args['class'],
+          typeApprenant: typeApprenant,
+          etablissementActuel: args['city'],
+          matieresPreferees: _selectedMatieres.toList(),
+          styleApprentissage: _selectedStyle,
+        );
+        debugPrint('Inscription élève - requête: ${request.toJson()}');
+        final response = await api.auth.inscrireEleve(request);
+        trackingId = response.trackingId;
+      }
 
-      // Appel API
-      final response = await api.auth.inscrireEleve(request);
-
-      // Sauvegarder la session
       await api.auth.saveUserData(
-        trackingId: response.trackingId,
-        role: 'ELEVE',
+        trackingId: trackingId,
+        role: roleStr,
       );
+
+      // Auto-login with JWT after registration
+      try {
+        final token = await api.auth.login(
+          args['email'] ?? '',
+          args['password'] ?? '',
+        );
+        await api.auth.saveToken(token.accessToken);
+      } catch (_) {
+        // Non bloquant : le trackingId est déjà sauvegardé
+      }
 
       if (mounted) {
         setState(() => _isLoading = false);
-        Navigator.pushNamedAndRemoveUntil(
-            context, AppRoutes.home, (route) => false);
+        _showSuccessDialog(trackingId);
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      debugPrint('Erreur lors de l’inscription élève: $e');
+      debugPrint('Erreur lors de l\'inscription ($userRole): $e');
       if (e is DioException) {
         debugPrint(
             'DioException response: ${e.response?.statusCode} ${e.response?.data}');
       }
       if (mounted) {
-        final message = api.handleError(e);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Erreur lors de la création du compte: $message')),
-        );
+        final is401 = e is DioException && e.response?.statusCode == 401;
+        if (is401 && userRole != UserRole.parent) {
+          _showRegisterUnavailable();
+        } else {
+          final message = api.handleError(e);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('Erreur lors de la création du compte: $message')),
+          );
+        }
       }
     }
   }

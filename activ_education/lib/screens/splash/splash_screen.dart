@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
+import '../../services/api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -74,12 +75,19 @@ class _SplashScreenState extends State<SplashScreen>
       }
     });
 
-    _controller.forward().then((_) {
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
-        }
-      });
+    _controller.forward().then((_) async {
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (!mounted) return;
+
+      // Vérifier si l'utilisateur est déjà connecté (JWT token présent)
+      final api = ApiService();
+      final token = await api.getAccessToken();
+      final trackingId = await api.getTrackingId();
+      if (token != null && trackingId != null) {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
+      }
     });
   }
 

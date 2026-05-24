@@ -12,11 +12,6 @@ class InteractionService extends BaseService {
     return MessageResponse.fromJson(res.data);
   }
 
-  Future<List<MessageResponse>> getMessagesConversations(String utilisateurId) async {
-    final res = await dio.get('/api/v1/messages/conversation/$utilisateurId');
-    return (res.data as List).map((e) => MessageResponse.fromJson(e)).toList();
-  }
-
   Future<List<MessageResponse>> getConversation(String user1, String user2) async {
     final res = await dio.get('/api/v1/messages/conversation', queryParameters: {'user1': user1, 'user2': user2});
     return (res.data as List).map((e) => MessageResponse.fromJson(e)).toList();

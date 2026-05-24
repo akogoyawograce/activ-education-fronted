@@ -47,6 +47,67 @@ class QuestionResponse {
       );
 }
 
+class ScoreMatriceRequest {
+  final String titreMatrice;
+  final double? scoreGoutsPersonnel;
+  final double? scoreAcademique;
+  final double? scoreMarcheTravail;
+  final double? scoreTotalEstime;
+
+  ScoreMatriceRequest({
+    required this.titreMatrice,
+    this.scoreGoutsPersonnel,
+    this.scoreAcademique,
+    this.scoreMarcheTravail,
+    this.scoreTotalEstime,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'titreMatrice': titreMatrice,
+        if (scoreGoutsPersonnel != null)
+          'scoreGoutsPersonnel': scoreGoutsPersonnel,
+        if (scoreAcademique != null) 'scoreAcademique': scoreAcademique,
+        if (scoreMarcheTravail != null)
+          'scoreMarcheTravail': scoreMarcheTravail,
+        if (scoreTotalEstime != null) 'scoreTotalEstime': scoreTotalEstime,
+      };
+}
+
+class ScoreMatriceResponse {
+  final String trackingId;
+  final String titreMatrice;
+  final double? scoreGoutsPersonnel;
+  final double? scoreAcademique;
+  final double? scoreMarcheTravail;
+  final double? scoreTotalEstime;
+  final DateTime createdAt;
+
+  ScoreMatriceResponse({
+    required this.trackingId,
+    required this.titreMatrice,
+    this.scoreGoutsPersonnel,
+    this.scoreAcademique,
+    this.scoreMarcheTravail,
+    this.scoreTotalEstime,
+    required this.createdAt,
+  });
+
+  factory ScoreMatriceResponse.fromJson(Map<String, dynamic> json) =>
+      ScoreMatriceResponse(
+        trackingId: json['trackingId'] ?? '',
+        titreMatrice: json['titreMatrice'] ?? '',
+        scoreGoutsPersonnel:
+            (json['scoreGoutsPersonnel'] as num?)?.toDouble(),
+        scoreAcademique: (json['scoreAcademique'] as num?)?.toDouble(),
+        scoreMarcheTravail:
+            (json['scoreMarcheTravail'] as num?)?.toDouble(),
+        scoreTotalEstime: (json['scoreTotalEstime'] as num?)?.toDouble(),
+        createdAt: json['createdAt'] != null
+            ? DateTime.parse(json['createdAt'])
+            : DateTime.now(),
+      );
+}
+
 class ReponseResponse {
   final String trackingId;
   final String texteReponse;
@@ -95,6 +156,7 @@ class ResultatDiagnosticRequest {
         if (recommandation != null) 'recommandation': recommandation,
       };
 }
+
 
 class ResultatDiagnosticResponse {
   final String trackingId;

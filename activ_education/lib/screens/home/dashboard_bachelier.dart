@@ -5,6 +5,9 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
+import '../../widgets/skeleton_widget.dart';
+import '../../services/recommendation_service.dart';
+import '../../widgets/recommendations_section.dart';
 
 class DashboardBachelier extends StatefulWidget {
   const DashboardBachelier({super.key});
@@ -25,6 +28,8 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
   ResultatDiagnosticResponse? _dernierResultat;
   EleveResponse? _userProfile;
   double _completionPercentage = 0.3; // Par défaut 30%
+  final _recommendationService = RecommendationService();
+  List<RecommendationResult> _recommendations = [];
 
   bool _isLoading = true;
 
@@ -40,7 +45,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
       _userTrackingId = await _api.getTrackingId();
 
       if (_userTrackingId == null) {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
         return;
       }
 
@@ -94,11 +99,18 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
         }
       } catch (_) {}
 
+      // Générer recommandations Quiz × Notes
+      _recommendations = _recommendationService.generate(
+        profilDecouvert: _dernierResultat?.profilDecouvert,
+        recommandation: _dernierResultat?.recommandation,
+        notes: _recentNotes,
+      );
+
       _completionPercentage = _calculateCompletion();
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
       debugPrint('Erreur chargement dashboard: $e');
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -108,7 +120,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
       backgroundColor: AppColors.backgroundGrey,
       body: SafeArea(
         child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? const SkeletonDashboard()
             : RefreshIndicator(
                 onRefresh: _loadDashboardData,
                 color: AppColors.primary,
@@ -137,6 +149,12 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
                       _buildQuickActions(),
 
                       const SizedBox(height: 32),
+
+                      // Recommandations personnalisées (Quiz × Notes)
+                      if (_recommendations.isNotEmpty) ...[
+                        RecommendationsSection(recommendations: _recommendations),
+                        const SizedBox(height: 24),
+                      ],
 
                       // Rendez-vous à venir
                       _buildUpcomingRdvs(),
@@ -180,7 +198,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textDark,
-                      fontFamily: 'Nunito',
+                      fontFamily: 'Inter',
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -212,6 +230,22 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
                 ),
               ),
             ],
+          ),
+        ),
+        GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRoutes.search),
+          child: Container(
+            width: 38,
+            height: 38,
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6),
+              ],
+            ),
+            child: const Icon(Icons.search_rounded, color: AppColors.primary, size: 22),
           ),
         ),
         Stack(
@@ -499,7 +533,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
               fontSize: 20,
               fontWeight: FontWeight.w900,
               color: AppColors.textDark,
-              fontFamily: 'Nunito',
+              fontFamily: 'Inter',
             ),
           ),
           const SizedBox(height: 8),

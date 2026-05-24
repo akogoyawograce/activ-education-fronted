@@ -5,6 +5,8 @@ import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/skeleton_widget.dart';
+import '../errors/empty_content_screen.dart';
 
 class NotesScreen extends StatefulWidget {
   const NotesScreen({super.key});
@@ -66,11 +68,23 @@ class _NotesScreenState extends State<NotesScreen>
     super.dispose();
   }
 
+  Future<bool> _hasToken() async {
+    final token = await _api.getAccessToken();
+    return token != null && token.isNotEmpty;
+  }
+
   Future<void> _loadNotes() async {
     try {
       setState(() => _isLoading = true);
       final trackingId = await _api.getTrackingId();
       if (trackingId == null) {
+        setState(() {
+          _isLoading = false;
+          _eleveId = null;
+        });
+        return;
+      }
+      if (!await _hasToken()) {
         setState(() {
           _isLoading = false;
           _eleveId = null;
@@ -85,15 +99,10 @@ class _NotesScreenState extends State<NotesScreen>
       });
       _animController.forward();
     } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${_api.handleError(e as dynamic)}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
+      setState(() {
+        _isLoading = false;
+        _eleveId = null;
+      });
     }
   }
 
@@ -126,6 +135,12 @@ class _NotesScreenState extends State<NotesScreen>
   Future<void> _submitNote() async {
     if (!_formKey.currentState!.validate()) return;
     if (_eleveId == null) return;
+    if (!await _hasToken()) {
+      if (mounted) {
+        Navigator.pushNamed(context, AppRoutes.login);
+      }
+      return;
+    }
 
     setState(() => _isSubmitting = true);
 
@@ -157,13 +172,9 @@ class _NotesScreenState extends State<NotesScreen>
       }
     } catch (e) {
       setState(() => _isSubmitting = false);
+      _eleveId = null;
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${_api.handleError(e as dynamic)}'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        setState(() {});
       }
     }
   }
@@ -395,61 +406,28 @@ class _NotesScreenState extends State<NotesScreen>
 
   Widget _buildNotesList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const SkeletonListPage();
     }
 
     if (_eleveId == null) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.person_outline_rounded, size: 80, color: AppColors.textLight),
-            const SizedBox(height: 24),
-            const Text(
-              'Connectez-vous pour voir vos notes',
-              style: AppTextStyles.headingMedium,
-            ),
-            const SizedBox(height: 16),
-            PrimaryButton(
-              label: 'Se connecter',
-              onPressed: () => Navigator.pushNamed(context, AppRoutes.login),
-            ),
-          ],
+        child: EmptyContentScreen(
+          icon: Icons.person_outline_rounded,
+          title: 'Connectez-vous pour voir vos notes',
+          actionLabel: 'Se connecter',
+          onAction: () => Navigator.pushNamed(context, AppRoutes.login),
         ),
       );
     }
 
     if (_notes.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.08),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.edit_note_rounded, size: 64, color: AppColors.primary),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Aucune note saisie',
-              style: AppTextStyles.headingLarge,
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Commencez par ajouter vos premières notes',
-              style: AppTextStyles.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            PrimaryButton(
-              label: 'Ajouter une note',
-              onPressed: _openAddForm,
-              trailingIcon: Icons.add_rounded,
-            ),
-          ],
+        child: EmptyContentScreen(
+          icon: Icons.edit_note_rounded,
+          title: 'Aucune note saisie',
+          subtitle: 'Commencez par ajouter vos premières notes',
+          actionLabel: 'Ajouter une note',
+          onAction: _openAddForm,
         ),
       );
     }
@@ -576,7 +554,7 @@ class _NoteCard extends StatelessWidget {
               child: Text(
                 note.note.toStringAsFixed(1),
                 style: TextStyle(
-                  fontFamily: 'Nunito',
+                  fontFamily: 'Inter',
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                   color: noteColor,

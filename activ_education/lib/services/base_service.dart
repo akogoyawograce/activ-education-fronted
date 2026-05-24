@@ -7,9 +7,8 @@ abstract class BaseService {
   static const _storage = FlutterSecureStorage();
 
   static Dio _initDio() {
-    final baseUrl = dotenv.get('API_BASE_URL', fallback: 'http://localhost:8080');
-    final skipNgrok = dotenv.get('API_SKIP_NGROK_WARNING', fallback: 'false') == 'true';
-    print('BaseService: baseUrl = $baseUrl, skipNgrok = $skipNgrok');
+    final baseUrl = dotenv.get('API_BASE_URL', fallback: 'http://localhost:8081');
+    print('BaseService: baseUrl = $baseUrl');
 
     final dio = Dio(BaseOptions(
       baseUrl: baseUrl,
@@ -18,17 +17,19 @@ abstract class BaseService {
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        if (skipNgrok) 'ngrok-skip-browser-warning': 'true',
       },
     ));
 
     dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) async {
-        final token = await _storage.read(key: 'auth_token');
-        if (token != null) {
-          options.headers['Authorization'] = 'Bearer $token';
-        }
-        handler.next(options);
+      onRequest: (options, handler) {
+        _storage.read(key: 'auth_token').then((token) {
+          if (token != null && token.isNotEmpty) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          handler.next(options);
+        }).catchError((_) {
+          handler.next(options);
+        });
       },
       onError: (error, handler) {
         handler.next(error);
@@ -41,7 +42,6 @@ abstract class BaseService {
   Dio get dio => _dio;
   FlutterSecureStorage get storage => _storage;
 
-  // Error handling common to all services
   String handleError(dynamic e) {
     if (e is DioException) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -62,6 +62,7 @@ abstract class BaseService {
     return e.toString();
   }
 
-  Future<String?> getTrackingId() => _storage.read(key: 'user_tracking_id');
-  Future<String?> getUserRole() => _storage.read(key: 'user_role');
+  Future<String?> getTrackingId() => _storage.read(key: 'user_tracking_id').catchError((_) => null);
+  Future<String?> getUserRole() => _storage.read(key: 'user_role').catchError((_) => null);
+  Future<String?> getAccessToken() => _storage.read(key: 'auth_token').catchError((_) => null);
 }
