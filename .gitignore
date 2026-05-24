@@ -5,11 +5,23 @@
 .env
 .env.*
 
-# Screenshots & diagrams
+# Screenshots & old mockups
 ap/
+complet/
+maquette mobile/
+**/maquette mobile/
 
 # Old admin dir (no longer exists)
 activ_education_admin/
+
+# Backup files
+*.backup
+*.backup[0-9]*
+*.bak
+*.orig
+
+# Old Nunito fonts (replaced by Inter + Poppins)
+**/Nunito-*.ttf
 
 # IDE
 .vscode/
@@ -18,7 +30,7 @@ activ_education_admin/
 *.ipr
 *.iws
 
-# Flutter
+# Flutter build & cache
 .metadata
 .dart_tool/
 .pub-cache/
