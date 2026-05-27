@@ -1,5 +1,8 @@
 // lib/theme/app_routes.dart
+import 'package:flutter/material.dart';
+
 class AppRoutes {
+  static final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
   // Auth & Onboarding
   static const String splash = '/';
   static const String onboarding = '/onboarding';
@@ -27,13 +30,14 @@ class AppRoutes {
   static const String notifications = '/notifications';
   static const String rdv = '/rdv';
   static const String enfantSuivi = '/enfant-suivi';
-  static const String diagnosticEnfant = '/diagnostic-enfant';
+
   static const String rdvList = '/rdv-list';
 
   // Utilitaires
   static const String ficheDetail = '/fiche-detail';
   static const String favorites = '/favorites';
   static const String search = '/search';
+  static const String conseillers = '/conseillers';
 
   // États
   static const String notFound = '/404';

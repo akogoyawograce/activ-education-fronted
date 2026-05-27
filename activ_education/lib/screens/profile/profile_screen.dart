@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
 import '../errors/empty_content_screen.dart';
+import '../../utils/profile_completion.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -13,10 +15,14 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+enum _ProfileType { eleve, parent, unknown }
+
 class _ProfileScreenState extends State<ProfileScreen> {
   final _api = ApiService();
+  _ProfileType _type = _ProfileType.unknown;
 
   EleveResponse? _eleve;
+  ParentResponse? _parent;
   List<FavoriResponse> _favoris = [];
   List<HistoriqueResponse> _historique = [];
   int _totalFavoris = 0;
@@ -39,8 +45,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() => _isLoading = false);
         return;
       }
-      final eleve = await _api.getEleve(trackingId);
-      setState(() { _eleve = eleve; _isLoading = false; });
+      final role = await _api.getUserRole();
+      if (role == 'PARENT') {
+        _type = _ProfileType.parent;
+        final parent = await _api.auth.getParent(trackingId);
+        setState(() { _parent = parent; _isLoading = false; });
+      } else if (role == 'ELEVE') {
+        _type = _ProfileType.eleve;
+        final eleve = await _api.getEleve(trackingId);
+        setState(() { _eleve = eleve; _isLoading = false; });
+      } else {
+        final eleve = await _api.getEleve(trackingId);
+        setState(() { _eleve = eleve; _isLoading = false; });
+      }
     } catch (_) {
       setState(() => _isLoading = false);
     }
@@ -70,16 +87,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {}
   }
 
-  bool get _isLoggedIn => _eleve != null;
+  bool get _isLoggedIn => _eleve != null || _parent != null;
+
+  String get _nom => _eleve?.nom ?? _parent?.nom ?? '';
+  String get _prenom => _eleve?.prenom ?? _parent?.prenom ?? '';
 
   String get _initials {
-    if (_eleve == null) return '??';
-    return '${_eleve!.prenom[0]}${_eleve!.nom[0]}';
+    if (_prenom.isEmpty && _nom.isEmpty) return '??';
+    return '${_prenom[0]}${_nom[0]}';
   }
 
-  String get _nomComplet => _eleve?.nomComplet ?? '';
+  String get _nomComplet => '$_prenom $_nom';
 
   String get _sousTitre {
+    if (_type == _ProfileType.parent) {
+      final e = _parent;
+      if (e == null) return '';
+      final parts = <String>['Parent'];
+      if (e.telephone != null && e.telephone!.isNotEmpty) parts.add(e.telephone!);
+      return parts.join(' — ');
+    }
     final e = _eleve;
     if (e == null) return '';
     final parts = <String>[_typeApprenantLabel(e.typeApprenant)];
@@ -100,15 +127,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   int get _completionPercent {
+    if (_type == _ProfileType.parent) return 100;
     final e = _eleve;
     if (e == null) return 0;
-    int filled = 0;
-    if (e.etablissementActuel != null && e.etablissementActuel!.isNotEmpty) filled++;
-    if (e.matieresPreferees != null && e.matieresPreferees!.isNotEmpty) filled++;
-    return ((filled / 5) * 100).round();
+    return calculateProfileCompletion(
+      telephone: e.telephone,
+      etablissementActuel: e.etablissementActuel,
+      filiere: e.filiere,
+      matieresPreferees: e.matieresPreferees,
+      hasNotes: false,
+      hasDiagnostic: false,
+    ).round();
   }
 
   List<String> _getChampsManquants() {
+    if (_type == _ProfileType.parent) return [];
     final e = _eleve;
     if (e == null) return [];
     final missing = <String>[];
@@ -146,11 +179,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _refreshProfile() async {
     final trackingId = await _api.getTrackingId();
     if (trackingId == null) return;
-    final eleve = await _api.getEleve(trackingId);
-    setState(() { _eleve = eleve; });
+    try {
+      if (_type == _ProfileType.parent) {
+        final parent = await _api.auth.getParent(trackingId);
+        setState(() { _parent = parent; });
+      } else {
+        final eleve = await _api.getEleve(trackingId);
+        setState(() { _eleve = eleve; });
+      }
+    } catch (_) {}
   }
 
-  // ─── MODALS ─────────────────────────────────────────────────────────────
+  // ─── MODALS (Élève) ────────────────────────────────────────────────────
 
   Future<void> _showEditParcours() async {
     final niveauCtrl = TextEditingController(text: _eleve?.niveauEtude ?? '');
@@ -203,6 +243,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await _updateEleve(matieresPreferees: matieres);
     }
     ctrl.dispose();
+  }
+
+  // ─── MODALS (Parent) ────────────────────────────────────────────────────
+
+  Future<void> _showEditParentInfo() async {
+    final nomCtrl = TextEditingController(text: _parent?.nom ?? '');
+    final prenomCtrl = TextEditingController(text: _parent?.prenom ?? '');
+    final telCtrl = TextEditingController(text: _parent?.telephone ?? '');
+    final result = await _showEditBottomSheet(
+      title: 'Mes informations',
+      children: [
+        _buildSheetField('Nom', nomCtrl),
+        const SizedBox(height: 12),
+        _buildSheetField('Prénom', prenomCtrl),
+        const SizedBox(height: 12),
+        _buildSheetField('Téléphone', telCtrl),
+      ],
+    );
+    if (result == true) {
+      await _updateParent(
+        nom: nomCtrl.text,
+        prenom: prenomCtrl.text,
+        telephone: telCtrl.text,
+      );
+    }
+    nomCtrl.dispose();
+    prenomCtrl.dispose();
+    telCtrl.dispose();
   }
 
   Future<bool?> _showEditBottomSheet({
@@ -287,6 +355,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // ─── UPDATE (Élève) ─────────────────────────────────────────────────────
+
   Future<void> _updateEleve({
     String? niveau,
     String? filiere,
@@ -303,7 +373,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         prenom: e.prenom,
         email: e.email,
         telephone: e.telephone,
-        motDePasse: 'placeholder',
         niveauEtude: niveau ?? e.niveauEtude,
         filiere: filiere ?? e.filiere,
         etablissementActuel: etablissement ?? e.etablissementActuel,
@@ -315,6 +384,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
         styleApprentissage: e.styleApprentissage,
       );
       await _api.modifierEleve(trackingId, req);
+      await _refreshProfile();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil mis à jour')),
+        );
+      }
+    } catch (err) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${_api.handleError(err)}')),
+        );
+      }
+    }
+  }
+
+  // ─── UPDATE (Parent) ────────────────────────────────────────────────────
+
+  Future<void> _updateParent({
+    String? nom,
+    String? prenom,
+    String? telephone,
+  }) async {
+    try {
+      final trackingId = await _api.getTrackingId();
+      if (trackingId == null) return;
+      final data = <String, dynamic>{};
+      if (nom != null && nom.isNotEmpty) data['nom'] = nom;
+      if (prenom != null && prenom.isNotEmpty) data['prenom'] = prenom;
+      if (telephone != null && telephone.isNotEmpty) data['telephone'] = telephone;
+      await _api.modifierParent(trackingId, data);
       await _refreshProfile();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -396,13 +495,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: CustomScrollView(
                       slivers: [
                         _buildHeaderSliver(),
-                        SliverToBoxAdapter(child: _buildCompletionCard()),
+                        if (_type == _ProfileType.eleve)
+                          SliverToBoxAdapter(child: _buildCompletionCard()),
                         SliverToBoxAdapter(child: _buildSections()),
-                        if (_favoris.isNotEmpty)
+                        if (_favoris.isNotEmpty && _type == _ProfileType.eleve)
                           SliverToBoxAdapter(child: _buildFavorisSection()),
-                        if (_historique.isNotEmpty)
+                        if (_historique.isNotEmpty && _type == _ProfileType.eleve)
                           SliverToBoxAdapter(child: _buildHistoriqueSection()),
                         SliverToBoxAdapter(child: _buildLogoutSection()),
+                        SliverToBoxAdapter(child: _buildVersionInfo()),
                         const SliverToBoxAdapter(
                           child: SizedBox(height: 32),
                         ),
@@ -531,17 +632,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.w400,
                 color: Colors.white.withValues(alpha: 0.8),
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
-            const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(2),
-              child: LinearProgressIndicator(
-                value: _completionPercent / 100,
-                backgroundColor: Colors.white.withValues(alpha: 0.3),
-                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
-                minHeight: 4,
+            if (_type == _ProfileType.eleve) ...[
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: _completionPercent / 100,
+                  backgroundColor: Colors.white.withValues(alpha: 0.3),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
+                  minHeight: 4,
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -601,6 +706,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     fontWeight: FontWeight.w500,
                     color: AppColors.accent,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -611,7 +717,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: SizedBox(
               height: 36,
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () => _showEditEtablissement(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.white,
@@ -636,91 +742,146 @@ class _ProfileScreenState extends State<ProfileScreen> {
   // ─── SECTIONS ───────────────────────────────────────────────────────────
 
   Widget _buildSections() {
+    final items = _type == _ProfileType.parent
+        ? _buildParentSections()
+        : _buildEleveSections();
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
-        children: [
-          _sectionItem(
-            icon: Icons.school,
-            title: 'Mon parcours',
-            subtitle: '${_eleve?.niveauEtude ?? ''} ${_eleve?.filiere ?? ''}'
-                .trim(),
-            onTap: _showEditParcours,
-          ),
-          const Divider(height: 1, color: AppColors.cardBorder),
-          _sectionItem(
-            icon: Icons.business,
-            title: 'Mon établissement',
-            subtitle: _eleve?.etablissementActuel ?? 'Non renseigné',
-            onTap: _showEditEtablissement,
-          ),
-          const Divider(height: 1, color: AppColors.cardBorder),
-          _sectionItem(
-            icon: Icons.star_outline,
-            title: "Mes centres d'intérêt",
-            subtitle: _matieresLabel,
-            onTap: _showEditInterets,
-          ),
-          const Divider(height: 1, color: AppColors.cardBorder),
-          _sectionItem(
-            icon: Icons.bar_chart,
-            title: 'Mes notes',
-            subtitle: '${_eleve?.niveauEtude ?? ''} — Saisies',
-            onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
-          ),
-          const Divider(height: 1, color: AppColors.cardBorder),
-          _sectionItem(
-            icon: Icons.folder_open,
-            title: 'Mes documents',
-            subtitle: 'X fichiers (bulletins)',
-            onTap: _showDocuments,
-          ),
-        ],
-      ),
+      child: Column(children: items),
     );
+  }
+
+  List<Widget> _buildEleveSections() {
+    return [
+      _sectionItem(
+        icon: Icons.school,
+        title: 'Mon parcours',
+        subtitle: '${_eleve?.niveauEtude ?? ''} ${_eleve?.filiere ?? ''}'.trim(),
+        onTap: _showEditParcours,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.business,
+        title: 'Mon établissement',
+        subtitle: _eleve?.etablissementActuel ?? 'Non renseigné',
+        onTap: _showEditEtablissement,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.star_outline,
+        title: "Mes centres d'intérêt",
+        subtitle: _matieresLabel,
+        onTap: _showEditInterets,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.bar_chart,
+        title: 'Mes notes',
+        subtitle: '${_eleve?.niveauEtude ?? ''} — Saisies',
+        onTap: () => Navigator.pushNamed(context, AppRoutes.notes),
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.folder_open,
+        title: 'Mes documents',
+        subtitle: 'X fichiers (bulletins)',
+        onTap: _showDocuments,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.vpn_key_rounded,
+        title: 'Mon identifiant',
+        subtitle: _eleve?.trackingId ?? '',
+        onTap: () {
+          if (_eleve?.trackingId != null) {
+            Clipboard.setData(ClipboardData(text: _eleve!.trackingId));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Identifiant copié !')),
+            );
+          }
+        },
+      ),
+    ];
+  }
+
+  List<Widget> _buildParentSections() {
+    final enfantsCount = _parent?.enfantsTrackingIds.length ?? 0;
+    return [
+      _sectionItem(
+        icon: Icons.person,
+        title: 'Mes informations',
+        subtitle: '${_parent?.nom ?? ''} ${_parent?.prenom ?? ''}'.trim(),
+        onTap: _showEditParentInfo,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.phone,
+        title: 'Téléphone',
+        subtitle: _parent?.telephone ?? 'Non renseigné',
+        onTap: _showEditParentInfo,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.mail,
+        title: 'Email',
+        subtitle: _parent?.email ?? '',
+        onTap: null,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.family_restroom,
+        title: 'Enfants liés',
+        subtitle: enfantsCount == 1 ? '1 enfant' : '$enfantsCount enfants',
+        onTap: null,
+      ),
+    ];
   }
 
   Widget _sectionItem({
     required IconData icon,
     required String title,
     required String subtitle,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
   }) {
-    return ListTile(
-      onTap: onTap,
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppColors.primary, size: 20),
         ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textDark,
+          ),
         ),
-      ),
-      subtitle: Text(
-        subtitle,
-        style: const TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 12,
-          color: AppColors.textMedium,
+        subtitle: Text(
+          subtitle,
+          style: const TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            color: AppColors.textMedium,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
-      ),
-      trailing: const Icon(
-        Icons.chevron_right_rounded,
-        color: AppColors.textLight,
+        trailing: onTap != null
+            ? const Icon(Icons.chevron_right_rounded, color: AppColors.textLight)
+            : null,
       ),
     );
   }
@@ -900,6 +1061,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             fontFamily: 'Inter',
             fontSize: 15,
             fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVersionInfo() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Center(
+        child: Text(
+          'Version 1.0.1',
+          style: AppTextStyles.caption.copyWith(
+            color: AppColors.textLight,
           ),
         ),
       ),

@@ -106,8 +106,12 @@ class _RecommendationCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Text(recommendation.titre,
-                          style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w700, fontSize: 14)),
+                      Flexible(
+                        child: Text(recommendation.titre,
+                            style: AppTextStyles.label.copyWith(fontWeight: FontWeight.w700, fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1),
+                      ),
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),

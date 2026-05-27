@@ -1,9 +1,31 @@
+class FicheLien {
+  final String trackingId;
+  final String titre;
+  final String resume;
+  final String? typeFiche;
+
+  FicheLien({
+    required this.trackingId,
+    required this.titre,
+    required this.resume,
+    this.typeFiche,
+  });
+
+  factory FicheLien.fromJson(Map<String, dynamic> json) => FicheLien(
+        trackingId: json['trackingId'] ?? '',
+        titre: json['titre'] ?? '',
+        resume: json['resume'] ?? '',
+        typeFiche: json['typeFiche'],
+      );
+}
+
 abstract class FicheBase {
   final String trackingId;
   final String titre;
   final String resume;
-  final String? imageUrl;
-  final String? videoUrl;
+  final List<String> imageUrls;
+  final List<String> videoUrls;
+  final List<String> documentUrls;
   final bool estPublie;
   final int nbConsultations;
   final String? typeFiche;
@@ -12,12 +34,16 @@ abstract class FicheBase {
     required this.trackingId,
     required this.titre,
     required this.resume,
-    this.imageUrl,
-    this.videoUrl,
+    this.imageUrls = const [],
+    this.videoUrls = const [],
+    this.documentUrls = const [],
     required this.estPublie,
     required this.nbConsultations,
     this.typeFiche,
   });
+
+  String? get imageUrl => imageUrls.isNotEmpty ? imageUrls.first : null;
+  String? get videoUrl => videoUrls.isNotEmpty ? videoUrls.first : null;
 }
 
 class FicheSerieResponse extends FicheBase {
@@ -30,8 +56,9 @@ class FicheSerieResponse extends FicheBase {
     required super.trackingId,
     required super.titre,
     required super.resume,
-    super.imageUrl,
-    super.videoUrl,
+    super.imageUrls,
+    super.videoUrls,
+    super.documentUrls,
     required super.estPublie,
     required super.nbConsultations,
     super.typeFiche,
@@ -46,8 +73,9 @@ class FicheSerieResponse extends FicheBase {
         trackingId: json['trackingId'] ?? '',
         titre: json['titre'] ?? '',
         resume: json['resume'] ?? '',
-        imageUrl: json['imageUrl'],
-        videoUrl: json['videoUrl'],
+        imageUrls: (json['imageUrls'] as List?)?.cast<String>() ?? [],
+        videoUrls: (json['videoUrls'] as List?)?.cast<String>() ?? [],
+        documentUrls: (json['documentUrls'] as List?)?.cast<String>() ?? [],
         estPublie: json['estPublie'] ?? false,
         nbConsultations: json['nbConsultations'] ?? 0,
         typeFiche: json['typeFiche'],
@@ -70,8 +98,9 @@ class FicheFiliereResponse extends FicheBase {
     required super.trackingId,
     required super.titre,
     required super.resume,
-    super.imageUrl,
-    super.videoUrl,
+    super.imageUrls,
+    super.videoUrls,
+    super.documentUrls,
     required super.estPublie,
     required super.nbConsultations,
     super.typeFiche,
@@ -88,8 +117,9 @@ class FicheFiliereResponse extends FicheBase {
         trackingId: json['trackingId'] ?? '',
         titre: json['titre'] ?? '',
         resume: json['resume'] ?? '',
-        imageUrl: json['imageUrl'],
-        videoUrl: json['videoUrl'],
+        imageUrls: (json['imageUrls'] as List?)?.cast<String>() ?? [],
+        videoUrls: (json['videoUrls'] as List?)?.cast<String>() ?? [],
+        documentUrls: (json['documentUrls'] as List?)?.cast<String>() ?? [],
         estPublie: json['estPublie'] ?? false,
         nbConsultations: json['nbConsultations'] ?? 0,
         typeFiche: json['typeFiche'],
@@ -113,8 +143,9 @@ class FicheMetierResponse extends FicheBase {
     required super.trackingId,
     required super.titre,
     required super.resume,
-    super.imageUrl,
-    super.videoUrl,
+    super.imageUrls,
+    super.videoUrls,
+    super.documentUrls,
     required super.estPublie,
     required super.nbConsultations,
     super.typeFiche,
@@ -130,8 +161,9 @@ class FicheMetierResponse extends FicheBase {
         trackingId: json['trackingId'] ?? '',
         titre: json['titre'] ?? '',
         resume: json['resume'] ?? '',
-        imageUrl: json['imageUrl'],
-        videoUrl: json['videoUrl'],
+        imageUrls: (json['imageUrls'] as List?)?.cast<String>() ?? [],
+        videoUrls: (json['videoUrls'] as List?)?.cast<String>() ?? [],
+        documentUrls: (json['documentUrls'] as List?)?.cast<String>() ?? [],
         estPublie: json['estPublie'] ?? false,
         nbConsultations: json['nbConsultations'] ?? 0,
         typeFiche: json['typeFiche'],
@@ -146,28 +178,33 @@ class FicheMetierResponse extends FicheBase {
 class FicheEtablissementResponse extends FicheBase {
   final String? adresse;
   final String? ville;
-  final String? region;
   final String? typeEtablissement;
+  final String? niveau;
   final String? contacts;
   final String? siteWeb;
+  final String? offreFormation;
   final bool estPublic;
+  final List<FicheLien> filieresProposees;
 
   FicheEtablissementResponse({
     required super.trackingId,
     required super.titre,
     required super.resume,
-    super.imageUrl,
-    super.videoUrl,
+    super.imageUrls,
+    super.videoUrls,
+    super.documentUrls,
     required super.estPublie,
     required super.nbConsultations,
     super.typeFiche,
     this.adresse,
     this.ville,
-    this.region,
     this.typeEtablissement,
+    this.niveau,
     this.contacts,
     this.siteWeb,
+    this.offreFormation,
     required this.estPublic,
+    this.filieresProposees = const [],
   });
 
   factory FicheEtablissementResponse.fromJson(Map<String, dynamic> json) =>
@@ -175,18 +212,24 @@ class FicheEtablissementResponse extends FicheBase {
         trackingId: json['trackingId'] ?? '',
         titre: json['titre'] ?? '',
         resume: json['resume'] ?? '',
-        imageUrl: json['imageUrl'],
-        videoUrl: json['videoUrl'],
+        imageUrls: (json['imageUrls'] as List?)?.cast<String>() ?? [],
+        videoUrls: (json['videoUrls'] as List?)?.cast<String>() ?? [],
+        documentUrls: (json['documentUrls'] as List?)?.cast<String>() ?? [],
         estPublie: json['estPublie'] ?? false,
         nbConsultations: json['nbConsultations'] ?? 0,
         typeFiche: json['typeFiche'],
         adresse: json['adresse'],
         ville: json['ville'],
-        region: json['region'],
         typeEtablissement: json['typeEtablissement'],
+        niveau: json['niveau'],
         contacts: json['contacts'],
         siteWeb: json['siteWeb'],
+        offreFormation: json['offreFormation'],
         estPublic: json['estPublic'] ?? true,
+        filieresProposees: (json['filieresProposees'] as List?)
+                ?.map((e) => FicheLien.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            [],
       );
 }
 

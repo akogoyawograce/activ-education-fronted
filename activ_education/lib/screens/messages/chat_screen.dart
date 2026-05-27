@@ -29,14 +29,37 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = true;
   bool _isSending = false;
 
+  static final _uuidRegex = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  bool get _expediteurIdInvalide =>
+      !_uuidRegex.hasMatch(widget.expediteurId);
+
   @override
   void initState() {
     super.initState();
-    _loadMessages();
+    if (_expediteurIdInvalide) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Contact invalide : "${widget.expediteurId}" n\'est pas un identifiant valide',
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      });
+      return;
+    }
+    _loadMessages(showLoading: true);
     // Start polling for new messages every 4 seconds
     _pollingTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (mounted && !_isSending) {
-        _loadMessages();
+        _loadMessages(showLoading: false);
       }
     });
   }
@@ -49,9 +72,18 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
-  Future<void> _loadMessages() async {
+  bool _listEquals(List<MessageResponse> a, List<MessageResponse> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].trackingId != b[i].trackingId) return false;
+    }
+    return true;
+  }
+
+  Future<void> _loadMessages({bool showLoading = true}) async {
+    if (_expediteurIdInvalide) return;
     try {
-      setState(() => _isLoading = true);
+      if (showLoading) setState(() => _isLoading = true);
       _userTrackingId = await _api.getTrackingId();
       if (_userTrackingId == null) return;
 
@@ -60,9 +92,11 @@ class _ChatScreenState extends State<ChatScreen> {
         _userTrackingId!,
       );
 
+      if (!showLoading && _listEquals(messages, _messages)) return;
+
       setState(() {
         _messages = messages;
-        _isLoading = false;
+        if (showLoading) _isLoading = false;
       });
 
       // Scroll to bottom if we were already near the bottom
@@ -93,6 +127,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _sendMessage() async {
     final contenu = _messageController.text.trim();
     if (contenu.isEmpty || _userTrackingId == null) return;
+    if (_expediteurIdInvalide) return;
 
     setState(() => _isSending = true);
 
@@ -291,12 +326,19 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   decoration: BoxDecoration(
                     color: isMe ? AppColors.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isMe
-                          ? AppColors.primary
-                          : AppColors.cardBorder,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isMe ? 16 : 4),
+                      bottomRight: Radius.circular(isMe ? 4 : 16),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,12 +374,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildInputArea() {
     return Container(
-      color: Colors.white,
       padding: EdgeInsets.only(
         left: 16,
         right: 16,
         top: 12,
         bottom: MediaQuery.of(context).padding.bottom + 8,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Row(
         children: [
@@ -347,7 +392,6 @@ class _ChatScreenState extends State<ChatScreen> {
               decoration: BoxDecoration(
                 color: AppColors.backgroundGrey,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.cardBorder),
               ),
               child: TextField(
                 controller: _messageController,

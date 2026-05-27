@@ -1,4 +1,5 @@
 // lib/screens/diagnostic/notes_screen.dart
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
@@ -103,6 +104,16 @@ class _NotesScreenState extends State<NotesScreen>
         _isLoading = false;
         _eleveId = null;
       });
+      if (mounted && e is DioException && e.response?.statusCode == 401) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Session expirée. Veuillez vous reconnecter.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        Navigator.pushNamedAndRemoveUntil(
+            context, AppRoutes.login, (route) => false);
+      }
     }
   }
 
@@ -172,8 +183,27 @@ class _NotesScreenState extends State<NotesScreen>
       }
     } catch (e) {
       setState(() => _isSubmitting = false);
-      _eleveId = null;
+      if (e is DioException && e.response?.statusCode == 401) {
+        _eleveId = null;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Session expirée. Veuillez vous reconnecter.'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.login, (route) => false);
+        }
+        return;
+      }
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_api.handleError(e)),
+            backgroundColor: AppColors.error,
+          ),
+        );
         setState(() {});
       }
     }

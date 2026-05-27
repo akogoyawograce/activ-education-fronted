@@ -8,6 +8,7 @@ import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
 import '../../services/recommendation_service.dart';
 import '../../widgets/recommendations_section.dart';
+import '../../utils/profile_completion.dart';
 
 class DashboardBachelier extends StatefulWidget {
   const DashboardBachelier({super.key});
@@ -16,7 +17,7 @@ class DashboardBachelier extends StatefulWidget {
   State<DashboardBachelier> createState() => _DashboardBachelierState();
 }
 
-class _DashboardBachelierState extends State<DashboardBachelier> {
+class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware {
   final _api = ApiService();
 
   String? _userTrackingId;
@@ -27,7 +28,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
   int _unreadMessagesCount = 0;
   ResultatDiagnosticResponse? _dernierResultat;
   EleveResponse? _userProfile;
-  double _completionPercentage = 0.3; // Par défaut 30%
+  double _completionPercentage = 30; // Par défaut 30%
   final _recommendationService = RecommendationService();
   List<RecommendationResult> _recommendations = [];
 
@@ -36,6 +37,23 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
   @override
   void initState() {
     super.initState();
+    _loadDashboardData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AppRoutes.routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    AppRoutes.routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
     _loadDashboardData();
   }
 
@@ -156,6 +174,11 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
                         const SizedBox(height: 24),
                       ],
 
+                      // Annuaire conseillers
+                      _buildConseillersCta(),
+
+                      const SizedBox(height: 24),
+
                       // Rendez-vous à venir
                       _buildUpcomingRdvs(),
 
@@ -192,17 +215,21 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
             children: [
               Row(
                 children: [
-                  Text(
-                    'Bonjour ${_userProfile?.prenom ?? "Bachelier"} !',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textDark,
-                      fontFamily: 'Inter',
+                  Flexible(
+                    child: Text(
+                      'Bonjour ${_userProfile?.prenom ?? "Bachelier"} !',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textDark,
+                        fontFamily: 'Inter',
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (_userProfile?.niveauEtude != null)
+                  if (_userProfile?.niveauEtude != null) ...[
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
@@ -218,6 +245,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
                         ),
                       ),
                     ),
+                  ],
                 ],
               ),
               const SizedBox(height: 4),
@@ -480,34 +508,14 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
   }
 
   double _calculateCompletion() {
-    int score = 0;
-    int total = 0;
-
-    // Nom/Prénom (toujours là si connecté)
-    total++;
-    if (_userProfile?.nom != null && _userProfile!.nom.isNotEmpty) score++;
-
-    // Téléphone
-    total++;
-    if (_userProfile?.telephone != null && _userProfile!.telephone!.isNotEmpty) score++;
-
-    // Établissement
-    total++;
-    if (_userProfile?.etablissementActuel != null && _userProfile!.etablissementActuel!.isNotEmpty) score++;
-
-    // Série / Filière
-    total++;
-    if (_userProfile?.filiere != null && _userProfile!.filiere!.isNotEmpty) score++;
-
-    // Notes
-    total++;
-    if (_recentNotes.isNotEmpty) score++;
-
-    // Diagnostic
-    total++;
-    if (_dernierResultat != null) score++;
-
-    return total > 0 ? score / total : 0.3;
+    return calculateProfileCompletion(
+      telephone: _userProfile?.telephone,
+      etablissementActuel: _userProfile?.etablissementActuel,
+      filiere: _userProfile?.filiere,
+      matieresPreferees: _userProfile?.matieresPreferees,
+      hasNotes: _recentNotes.isNotEmpty,
+      hasDiagnostic: _dernierResultat != null,
+    );
   }
 
   Widget _buildActionRequiseCard() {
@@ -550,7 +558,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Profil: ${(_completionPercentage * 100).toInt()}% complété',
+                'Profil: ${_completionPercentage.toInt()}% complété',
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -571,7 +579,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: _completionPercentage,
+              value: _completionPercentage / 100,
               minHeight: 8,
               backgroundColor: AppColors.backgroundGrey,
               valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
@@ -600,7 +608,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
                   ),
                 ),
                 SizedBox(width: 8),
-                Icon(Icons.arrow_forward_rounded, size: 20),
+                const Icon(Icons.arrow_forward_rounded, size: 20),
               ],
             ),
           ),
@@ -666,6 +674,50 @@ class _DashboardBachelierState extends State<DashboardBachelier> {
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildConseillersCta() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.conseillers),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.people_rounded, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nos conseillers',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Trouve un conseiller et échange avec lui',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
+          ],
+        ),
+      ),
     );
   }
 

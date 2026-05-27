@@ -46,7 +46,7 @@ class EleveRequest {
   final String prenom;
   final String email;
   final String? telephone;
-  final String motDePasse;
+  final String? motDePasse;
   final String? niveauEtude;
   final String? etablissementActuel;
   final String? filiere;
@@ -59,7 +59,7 @@ class EleveRequest {
     required this.prenom,
     required this.email,
     this.telephone,
-    required this.motDePasse,
+    this.motDePasse,
     this.niveauEtude,
     this.etablissementActuel,
     this.filiere,
@@ -73,7 +73,7 @@ class EleveRequest {
         'prenom': prenom,
         'email': email,
         if (telephone != null) 'telephone': telephone,
-        'motDePasse': motDePasse,
+        if (motDePasse != null) 'motDePasse': motDePasse,
         if (niveauEtude != null) 'niveauEtude': niveauEtude,
         if (etablissementActuel != null) 'etablissementActuel': etablissementActuel,
         if (filiere != null) 'filiere': filiere,

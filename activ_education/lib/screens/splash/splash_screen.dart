@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
@@ -79,16 +81,34 @@ class _SplashScreenState extends State<SplashScreen>
       await Future.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
 
-      // Vérifier si l'utilisateur est déjà connecté (JWT token présent)
+      // Vérifier si l'utilisateur est déjà connecté (JWT token présent et valide)
       final api = ApiService();
       final token = await api.getAccessToken();
       final trackingId = await api.getTrackingId();
-      if (token != null && trackingId != null) {
+      if (token != null && trackingId != null && _isTokenValid(token)) {
         Navigator.pushReplacementNamed(context, AppRoutes.home);
       } else {
+        await api.storage.deleteAll();
         Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
       }
     });
+  }
+
+  bool _isTokenValid(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return false;
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final decoded = utf8.decode(base64Url.decode(normalized));
+      final json = jsonDecode(decoded) as Map<String, dynamic>;
+      final exp = json['exp'] as int?;
+      if (exp == null) return false;
+      final expiry = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+      return expiry.isAfter(DateTime.now());
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -136,6 +156,8 @@ class _SplashScreenState extends State<SplashScreen>
                                 'assets/images/logo.jpeg',
                                 width: 50,
                                 height: 50,
+                                cacheWidth: 50,
+                                cacheHeight: 50,
                                 fit: BoxFit.cover,
                               ),
                             ),

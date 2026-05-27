@@ -19,9 +19,14 @@ class AuthService extends BaseService {
     return res.data as Map<String, dynamic>;
   }
 
-  /// Save JWT token + user data
+  /// Save JWT access token
   Future<void> saveToken(String token) async {
     await storage.write(key: 'auth_token', value: token);
+  }
+
+  /// Save refresh token
+  Future<void> saveRefreshToken(String token) async {
+    await storage.write(key: 'refresh_token', value: token);
   }
 
   Future<void> saveUserData({
@@ -95,13 +100,15 @@ class AuthService extends BaseService {
         final eleve = await getEleve(trackingId);
         return {'nom': eleve.nom, 'prenom': eleve.prenom, 'type': 'eleve'};
       } catch (_) {
-        return {'nom': 'Inconnu', 'prenom': 'Utilisateur', 'type': 'inconnu'};
+        final short = trackingId.length >= 8 ? trackingId.substring(0, 8) : trackingId;
+        return {'nom': short, 'prenom': 'Élève', 'type': 'inconnu'};
       }
     }
   }
 
   Future<List<ConseillerResponse>> getConseillers({int page = 0, int size = 100}) async {
     final res = await dio.get('/api/v1/conseillers', queryParameters: {'page': page, 'size': size});
-    return (res.data as List).map((e) => ConseillerResponse.fromJson(e)).toList();
+    final pageResponse = PageResponse.fromJson(res.data, (json) => ConseillerResponse.fromJson(json));
+    return pageResponse.content;
   }
 }

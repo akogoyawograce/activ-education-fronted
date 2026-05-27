@@ -89,115 +89,118 @@ class _CatalogueFilterSheetState extends State<CatalogueFilterSheet> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Handle
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // Header
-          Row(
-            children: [
-              Text('Filtrer', style: AppTextStyles.displayMedium),
-              const Spacer(),
-              TextButton(
+            // Header
+            Row(
+              children: [
+                Text('Filtrer', style: AppTextStyles.displayMedium),
+                const Spacer(),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _sortBy = 'pertinence';
+                      _domaine = null;
+                      _niveau = null;
+                      _ville = null;
+                      _onlyPublic = false;
+                    });
+                  },
+                  child: Text('Réinitialiser',
+                      style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Tri
+            Text('Trier par', style: AppTextStyles.label),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: _sortOptions.map((opt) {
+                final isActive = _sortBy == opt.$1;
+                return ChoiceChip(
+                  label: Text(opt.$2, style: TextStyle(fontSize: 13, color: isActive ? Colors.white : AppColors.textMedium)),
+                  selected: isActive,
+                  selectedColor: AppColors.primary,
+                  backgroundColor: AppColors.backgroundGrey,
+                  onSelected: (_) => setState(() => _sortBy = opt.$1),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+
+            // Domaine
+            Text('Domaine', style: AppTextStyles.label),
+            const SizedBox(height: 8),
+            _buildChipGroup(_domaines, _domaine, (v) => setState(() => _domaine = v)),
+            const SizedBox(height: 20),
+
+            // Niveau
+            Text('Niveau', style: AppTextStyles.label),
+            const SizedBox(height: 8),
+            _buildChipGroup(_niveaux, _niveau, (v) => setState(() => _niveau = v)),
+            const SizedBox(height: 20),
+
+            // Ville
+            Text('Ville', style: AppTextStyles.label),
+            const SizedBox(height: 8),
+            _buildChipGroup(_villes, _ville, (v) => setState(() => _ville = v)),
+            const SizedBox(height: 20),
+
+            // Public/Privé
+            Row(
+              children: [
+                Checkbox(
+                  value: _onlyPublic,
+                  onChanged: (v) => setState(() => _onlyPublic = v ?? false),
+                  activeColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                ),
+                Text('Établissements publics uniquement',
+                    style: AppTextStyles.bodyMedium),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Apply
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    _sortBy = 'pertinence';
-                    _domaine = null;
-                    _niveau = null;
-                    _ville = null;
-                    _onlyPublic = false;
-                  });
+                  widget.onApply(CatalogueFilters(
+                    sortBy: _sortBy,
+                    domaine: _domaine,
+                    niveau: _niveau,
+                    ville: _ville,
+                    onlyPublic: _onlyPublic,
+                  ));
+                  Navigator.pop(context);
                 },
-                child: Text('Réinitialiser',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w700)),
+                child: const Text('Appliquer les filtres'),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // Tri
-          Text('Trier par', style: AppTextStyles.label),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            children: _sortOptions.map((opt) {
-              final isActive = _sortBy == opt.$1;
-              return ChoiceChip(
-                label: Text(opt.$2, style: TextStyle(fontSize: 13, color: isActive ? Colors.white : AppColors.textMedium)),
-                selected: isActive,
-                selectedColor: AppColors.primary,
-                backgroundColor: AppColors.backgroundGrey,
-                onSelected: (_) => setState(() => _sortBy = opt.$1),
-              );
-            }).toList(),
-          ),
-          const SizedBox(height: 20),
-
-          // Domaine
-          Text('Domaine', style: AppTextStyles.label),
-          const SizedBox(height: 8),
-          _buildChipGroup(_domaines, _domaine, (v) => setState(() => _domaine = v)),
-          const SizedBox(height: 20),
-
-          // Niveau
-          Text('Niveau', style: AppTextStyles.label),
-          const SizedBox(height: 8),
-          _buildChipGroup(_niveaux, _niveau, (v) => setState(() => _niveau = v)),
-          const SizedBox(height: 20),
-
-          // Ville
-          Text('Ville', style: AppTextStyles.label),
-          const SizedBox(height: 8),
-          _buildChipGroup(_villes, _ville, (v) => setState(() => _ville = v)),
-          const SizedBox(height: 20),
-
-          // Public/Privé
-          Row(
-            children: [
-              Checkbox(
-                value: _onlyPublic,
-                onChanged: (v) => setState(() => _onlyPublic = v ?? false),
-                activeColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-              ),
-              Text('Établissements publics uniquement',
-                  style: AppTextStyles.bodyMedium),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // Apply
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                widget.onApply(CatalogueFilters(
-                  sortBy: _sortBy,
-                  domaine: _domaine,
-                  niveau: _niveau,
-                  ville: _ville,
-                  onlyPublic: _onlyPublic,
-                ));
-                Navigator.pop(context);
-              },
-              child: const Text('Appliquer les filtres'),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

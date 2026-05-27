@@ -98,6 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       await api.auth.saveToken(token.accessToken);
+      await api.auth.saveRefreshToken(token.refreshToken);
       await api.auth.saveUserData(
         trackingId: token.trackingId,
         role: token.typeUtilisateur,
@@ -139,6 +140,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       'assets/images/logo.jpeg',
                       width: 56,
                       height: 56,
+                      cacheWidth: 56,
+                      cacheHeight: 56,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         debugPrint('Erreur chargement logo: $error');

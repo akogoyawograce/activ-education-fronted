@@ -85,6 +85,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       'assets/images/logo.jpeg',
                       width: 34,
                       height: 34,
+                      cacheWidth: 34,
+                      cacheHeight: 34,
                       fit: BoxFit.cover,
                     ),
                   ),

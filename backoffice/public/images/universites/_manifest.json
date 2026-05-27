@@ -1,0 +1,74 @@
+{
+  "aic": [
+    "aic_logo.jpg"
+  ],
+  "cirel": [
+    "cirel.ico",
+    "cirel_logo.jpg"
+  ],
+  "defitech": [
+    "defitech.ico",
+    "defitech_logo.png"
+  ],
+  "esa": [
+    "esa.ico"
+  ],
+  "esag_nde": [
+    "esag_nde.ico",
+    "esag_nde_logo.jpg"
+  ],
+  "esam": [
+    "esam_logo.ico"
+  ],
+  "esgis": [
+    "esgis.ico",
+    "esgis_logo.png"
+  ],
+  "esiba": [
+    "esiba.png",
+    "esiba_logo.png"
+  ],
+  "esma": [
+    "esma.ico",
+    "esma_logo.png"
+  ],
+  "esseg": [
+    "esseg.ico",
+    "esseg_logo.png"
+  ],
+  "esteca": [
+    "esteca.ico",
+    "esteca_logo.jpg"
+  ],
+  "iaec": [
+    "iaec_logo.ico"
+  ],
+  "iai": [
+    "iai_logo.jpeg"
+  ],
+  "iheris": [
+    "iheris_logo.png"
+  ],
+  "isages": [
+    "isages.ico",
+    "isages_logo.png"
+  ],
+  "ism_adonai": [
+    "ism_adonai.ico"
+  ],
+  "lbs": [
+    "lbs_logo.png"
+  ],
+  "ucao_uut": [
+    "ucao_uut.ico",
+    "ucao_uut_logo.png"
+  ],
+  "uk": [
+    "uk.ico",
+    "uk_logo.png"
+  ],
+  "ul": [
+    "ul.ico",
+    "ul_logo.jpg"
+  ]
+}

@@ -51,6 +51,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     }
 
+    // Save access_token FIRST so subsequent API calls use the new token
+    localStorage.setItem('access_token', tokenRes.accessToken)
+    localStorage.setItem('refresh_token', tokenRes.refreshToken)
+    localStorage.setItem('user_tracking_id', tokenRes.trackingId)
+    localStorage.setItem('user_type', userType)
+
     let userName = userType || ''
     try {
       const me = await getMe()
@@ -70,10 +76,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     }
 
-    localStorage.setItem('access_token', tokenRes.accessToken)
-    localStorage.setItem('refresh_token', tokenRes.refreshToken)
-    localStorage.setItem('user_tracking_id', tokenRes.trackingId)
-    localStorage.setItem('user_type', userType)
     if (niveauAcces) localStorage.setItem('user_niveau_acces', niveauAcces)
     if (userName) localStorage.setItem('user_name', userName)
 

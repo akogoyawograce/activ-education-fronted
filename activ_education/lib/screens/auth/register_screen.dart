@@ -219,6 +219,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           'assets/images/logo.jpeg',
                           width: 56,
                           height: 56,
+                          cacheWidth: 56,
+                          cacheHeight: 56,
                           fit: BoxFit.cover,
                         ),
                       ),

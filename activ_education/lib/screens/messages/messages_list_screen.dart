@@ -12,10 +12,11 @@ class MessagesListScreen extends StatefulWidget {
   State<MessagesListScreen> createState() => _MessagesListScreenState();
 }
 
-class _MessagesListScreenState extends State<MessagesListScreen> {
+class _MessagesListScreenState extends State<MessagesListScreen> with RouteAware {
   final _api = ApiService();
 
   List<MessageResponse> _messages = [];
+  List<MapEntry<String, List<MessageResponse>>> _groupedMessages = [];
   Map<String, String> _expediteursNoms = {};
   int _unreadCount = 0;
   bool _isLoading = true;
@@ -25,6 +26,23 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
   @override
   void initState() {
     super.initState();
+    _loadMessages();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    AppRoutes.routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void dispose() {
+    AppRoutes.routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
     _loadMessages();
   }
 
@@ -52,6 +70,7 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
 
       setState(() {
         _messages = messages;
+        _groupedMessages = _groupByExpediteur();
         _expediteursNoms = noms;
         _unreadCount = nonLus;
         _isLoading = false;
@@ -234,13 +253,9 @@ class _MessagesListScreenState extends State<MessagesListScreen> {
       onRefresh: _loadMessages,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _messages.length,
+        itemCount: _groupedMessages.length,
         itemBuilder: (context, index) {
-          // We need to show grouped conversations, not each message.
-          // Let's compute grouped list inside.
-          final grouped = _groupByExpediteur();
-          if (index >= grouped.length) return const SizedBox.shrink();
-          final entry = grouped[index];
+          final entry = _groupedMessages[index];
           final expediteurId = entry.key;
           final messages = entry.value;
           final latestMessage = messages.first;
@@ -434,6 +449,13 @@ class _NewMessageSheetState extends State<_NewMessageSheet> {
   bool _loadingConseillers = true;
   String _manualId = '';
 
+  static final _uuidRegex = RegExp(
+    r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
+    caseSensitive: false,
+  );
+
+  bool get _manualIdValid => _uuidRegex.hasMatch(_manualId.trim());
+
   @override
   void initState() {
     super.initState();
@@ -546,7 +568,7 @@ class _NewMessageSheetState extends State<_NewMessageSheet> {
                   Expanded(
                     child: TextField(
                       decoration: InputDecoration(
-                        hintText: 'Ou entrer un ID manuellement...',
+                        hintText: 'Ou entrer un UUID manuellement...',
                         isDense: true,
                         filled: true,
                         fillColor: AppColors.backgroundGrey,
@@ -565,7 +587,7 @@ class _NewMessageSheetState extends State<_NewMessageSheet> {
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: _manualId.trim().length > 5
+                    onTap: _manualIdValid
                         ? () => widget.onSelectContact(
                               _manualId.trim(),
                               _manualId.trim().substring(0, 8),
@@ -574,7 +596,7 @@ class _NewMessageSheetState extends State<_NewMessageSheet> {
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: _manualId.trim().length > 5
+                        color: _manualIdValid
                             ? AppColors.primary
                             : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(10),

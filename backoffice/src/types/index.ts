@@ -165,6 +165,7 @@ export interface FicheResponse {
   trackingId: string
   titre: string
   resume: string
+  contenu: string
   imageUrls: string[]
   videoUrls: string[]
   documentUrls: string[]
@@ -206,6 +207,7 @@ export interface FicheEtablissementResponse extends FicheResponse {
   adresse: string
   ville: string
   typeEtablissement: string
+  niveau: string
   contacts: string
   siteWeb: string
   offreFormation: string
@@ -260,6 +262,7 @@ export interface FicheEtablissementRequest {
   adresse: string
   ville: string
   typeEtablissement: string
+  niveau?: string
   contacts?: string
   siteWeb?: string
   offreFormation?: string

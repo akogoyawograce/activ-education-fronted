@@ -62,36 +62,13 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
             Text('Inscription réussie !', style: AppTextStyles.headingMedium),
           ],
         ),
-        content: Column(
+        content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Voici votre identifiant unique. Conservez-le précieusement pour vous connecter.',
-              style: AppTextStyles.bodyMedium,
-            ),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.backgroundGrey,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.cardBorder),
-              ),
-              child: SelectableText(
-                trackingId,
-                style: AppTextStyles.label.copyWith(
-                  color: AppColors.primary,
-                  fontSize: 13,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 8),
             Text(
-              'Vous pouvez aussi utiliser votre email pour vous connecter.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+              'Votre compte a été créé avec succès. Vous pouvez maintenant vous connecter avec votre email.',
+              style: AppTextStyles.bodyMedium,
             ),
           ],
         ),
@@ -229,6 +206,7 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
           args['password'] ?? '',
         );
         await api.auth.saveToken(token.accessToken);
+        await api.auth.saveRefreshToken(token.refreshToken);
       } catch (_) {
         // Non bloquant : le trackingId est déjà sauvegardé
       }

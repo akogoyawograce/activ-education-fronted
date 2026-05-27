@@ -174,6 +174,30 @@ class _RdvListScreenState extends State<RdvListScreen>
     }
   }
 
+  Future<void> _terminerRdv(String trackingId) async {
+    try {
+      await _api.terminerRDV(trackingId);
+      await _loadRdvs();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Rendez-vous validé'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${_api.handleError(e as dynamic)}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   void _showCancelConfirmation(RendezVousResponse rdv) {
     showDialog(
       context: context,
@@ -197,6 +221,35 @@ class _RdvListScreenState extends State<RdvListScreen>
             },
             child: const Text('Annuler',
                 style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showValidateConfirmation(RendezVousResponse rdv) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Valider ce rendez-vous ?'),
+        content: Text(
+          'Le ${_formatDate(rdv.dateHeurePrevue!)} à ${_formatTime(rdv.dateHeurePrevue!)}',
+          style: AppTextStyles.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler',
+                style: TextStyle(color: AppColors.primary)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _terminerRdv(rdv.trackingId);
+            },
+            child: const Text('Valider',
+                style: TextStyle(color: AppColors.success)),
           ),
         ],
       ),
@@ -426,33 +479,91 @@ class _RdvListScreenState extends State<RdvListScreen>
                   ),
                   const SizedBox(width: 8),
                 ],
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => _showCancelConfirmation(rdv),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.cancel_rounded,
-                              color: AppColors.error, size: 18),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Annuler',
-                            style: AppTextStyles.caption.copyWith(
-                              color: AppColors.error,
-                              fontWeight: FontWeight.w700,
+                if (_userRole == 'CONSEILLER') ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showValidateConfirmation(rdv),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.check_circle_rounded,
+                                color: AppColors.success, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Valider',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.success,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showCancelConfirmation(rdv),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.cancel_rounded,
+                                color: AppColors.error, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Rejeter',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _showCancelConfirmation(rdv),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.cancel_rounded,
+                                color: AppColors.error, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Annuler',
+                              style: AppTextStyles.caption.copyWith(
+                                color: AppColors.error,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],

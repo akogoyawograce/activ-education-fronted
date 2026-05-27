@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
+import '../../services/parent_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
 
@@ -97,6 +98,8 @@ class _DashboardParentState extends State<DashboardParent> {
                               const SizedBox(height: 16),
                             ],
                             _buildShortcutGrid(),
+                            const SizedBox(height: 24),
+                            _buildConseillersCta(),
                           ],
                         ),
                       ),
@@ -203,6 +206,8 @@ class _DashboardParentState extends State<DashboardParent> {
                 fontWeight: FontWeight.w600,
                 color: isSelected ? AppColors.primary : Colors.white,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ],
         ),
@@ -272,6 +277,8 @@ class _DashboardParentState extends State<DashboardParent> {
                     Text(
                       '${enfant.niveauEtude ?? "Niveau non renseigné"} · ${enfant.etablissementActuel ?? ""}',
                       style: AppTextStyles.caption,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ],
                 ),
@@ -283,11 +290,14 @@ class _DashboardParentState extends State<DashboardParent> {
             children: [
               const Icon(Icons.schedule_rounded, size: 16, color: AppColors.textLight),
               const SizedBox(width: 6),
-              Text(
-                _dernierResultat != null
-                    ? 'Quiz passé $joursDepuisQuiz'
-                    : joursDepuisQuiz,
-                style: AppTextStyles.caption,
+              Flexible(
+                child: Text(
+                  _dernierResultat != null
+                      ? 'Quiz passé $joursDepuisQuiz'
+                      : joursDepuisQuiz,
+                  style: AppTextStyles.caption,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -311,17 +321,7 @@ class _DashboardParentState extends State<DashboardParent> {
             ),
           ],
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => Navigator.pushNamed(
-                context,
-                AppRoutes.diagnosticEnfant,
-                arguments: {'enfantId': enfant.trackingId},
-              ),
-              child: const Text('Voir son diagnostic'),
-            ),
-          ),
+
         ],
       ),
     );
@@ -358,17 +358,76 @@ class _DashboardParentState extends State<DashboardParent> {
     );
   }
 
+  void _showLinkEnfantDialog() {
+    final controller = TextEditingController();
+    var loading = false;
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Lier un enfant'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Saisis l\'identifiant (trackingId) de l\'enfant.'),
+              const Text('L\'enfant trouve son trackingId dans son profil.',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMedium)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  labelText: 'TrackingId de l\'enfant',
+                  border: OutlineInputBorder(),
+                ),
+                enabled: !loading,
+              ),
+              if (loading) ...[
+                const SizedBox(height: 12),
+                const LinearProgressIndicator(),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: loading ? null : () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
+            FilledButton(
+              onPressed: loading
+                  ? null
+                  : () async {
+                      final childId = controller.text.trim();
+                      if (childId.isEmpty) return;
+                      if (_parentTrackingId == null) return;
+                      setDialogState(() => loading = true);
+                      try {
+                        await ParentService()
+                            .ajouterEnfant(_parentTrackingId!, childId);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        _loadData();
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          setDialogState(() => loading = false);
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Erreur : ${e.toString()}')),
+                          );
+                        }
+                      }
+                    },
+              child: const Text('Lier'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildShortcutGrid() {
-    final enfantsId = _selectedEnfant?.trackingId;
     final shortcuts = [
       _ShortcutData(
-        Icons.assignment_rounded,
-        'Diagnostics\nde l\'enfant',
-        () => Navigator.pushNamed(
-          context,
-          AppRoutes.diagnosticEnfant,
-          arguments: {'enfantId': enfantsId},
-        ),
+        Icons.person_add_rounded,
+        'Lier un\nenfant',
+        _showLinkEnfantDialog,
       ),
       _ShortcutData(
         Icons.chat_rounded,
@@ -387,16 +446,18 @@ class _DashboardParentState extends State<DashboardParent> {
       ),
     ];
 
+    final rowCount = (shortcuts.length + 1) ~/ 2;
     return Column(
       children: [
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < rowCount; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
                 Expanded(child: _buildShortcutTile(shortcuts[i * 2])),
-                const SizedBox(width: 12),
-                Expanded(child: _buildShortcutTile(shortcuts[i * 2 + 1])),
+                if (i * 2 + 1 < shortcuts.length) const SizedBox(width: 12),
+                if (i * 2 + 1 < shortcuts.length)
+                  Expanded(child: _buildShortcutTile(shortcuts[i * 2 + 1])),
               ],
             ),
           ),
@@ -441,7 +502,52 @@ class _DashboardParentState extends State<DashboardParent> {
                 color: AppColors.textDark,
                 height: 1.3,
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+  Widget _buildConseillersCta() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.conseillers),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.people_rounded, color: AppColors.primary, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Nos conseillers',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Trouve un conseiller et échange avec lui',
+                    style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
           ],
         ),
       ),

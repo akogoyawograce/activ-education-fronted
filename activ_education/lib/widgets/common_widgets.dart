@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../theme/app_theme.dart';
+import '../utils/image_utils.dart';
 
 // ─── Primary Button (Orange) ───────────────────────────────────────────────
 class PrimaryButton extends StatelessWidget {
@@ -206,7 +208,7 @@ class SocialButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(iconAsset, width: 22, height: 22),
+            Image.asset(iconAsset, width: 22, height: 22, cacheWidth: 22, cacheHeight: 22),
             const SizedBox(width: 10),
             Text(
               label,
@@ -238,6 +240,79 @@ class DividerWithText extends StatelessWidget {
         ),
         const Expanded(child: Divider(color: AppColors.cardBorder)),
       ],
+    );
+  }
+}
+
+// ─── Auth Image (with JWT header) ──────────────────────────────────────────
+class AuthImage extends StatefulWidget {
+  final String? imageUrl;
+  final double? height;
+  final double? width;
+  final BoxFit fit;
+  final Widget Function(BuildContext, Widget, ImageChunkEvent?)? loadingBuilder;
+  final Widget Function(BuildContext, Object, StackTrace?)? errorBuilder;
+
+  const AuthImage({
+    super.key,
+    required this.imageUrl,
+    this.height,
+    this.width,
+    this.fit = BoxFit.cover,
+    this.loadingBuilder,
+    this.errorBuilder,
+  });
+
+  @override
+  State<AuthImage> createState() => _AuthImageState();
+}
+
+class _AuthImageState extends State<AuthImage> {
+  final _storage = const FlutterSecureStorage();
+  String? _token;
+  bool _loaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadToken();
+  }
+
+  Future<void> _loadToken() async {
+    final token = await _storage.read(key: 'auth_token');
+    if (mounted) setState(() { _token = token; _loaded = true; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = resolveImageUrl(widget.imageUrl);
+    if (url == null) return const SizedBox.shrink();
+
+    if (!_loaded) {
+      return _placeholder();
+    }
+
+    final headers = _token != null ? {'Authorization': 'Bearer $_token'} : null;
+    final cacheH = widget.height != null && widget.height!.isFinite ? widget.height!.toInt() : null;
+
+    return Image.network(
+      url,
+      height: widget.height,
+      width: widget.width,
+      cacheHeight: cacheH,
+      fit: widget.fit,
+      headers: headers,
+      loadingBuilder: widget.loadingBuilder,
+      errorBuilder: widget.errorBuilder ?? (_, __, ___) => _placeholder(),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      height: widget.height,
+      width: widget.width,
+      color: AppColors.cardBorder.withValues(alpha: 0.2),
+      child: const Center(child: Icon(Icons.image_outlined, color: AppColors.textLight, size: 32)),
     );
   }
 }

@@ -18,6 +18,9 @@ import AdminDashboard from '@/pages/admin/AdminDashboard'
 import ElevesPage from '@/pages/admin/ElevesPage'
 import ParentsPage from '@/pages/admin/ParentsPage'
 import FilieresPage from '@/pages/admin/FilieresPage'
+import MetiersPage from '@/pages/admin/MetiersPage'
+import SeriesPage from '@/pages/admin/SeriesPage'
+import EtablissementsPage from '@/pages/admin/EtablissementsPage'
 import QuizPage from '@/pages/admin/QuizPage'
 import QuizEditorPage from '@/pages/admin/QuizEditorPage'
 import ConseillersPage from '@/pages/admin/ConseillersPage'
@@ -59,6 +62,9 @@ export default function App() {
               <Route path="/admin/eleves" element={<ElevesPage />} />
               <Route path="/admin/parents" element={<ParentsPage />} />
               <Route path="/admin/filieres" element={<FilieresPage />} />
+              <Route path="/admin/metiers" element={<MetiersPage />} />
+              <Route path="/admin/series" element={<SeriesPage />} />
+              <Route path="/admin/etablissements" element={<EtablissementsPage />} />
               <Route path="/admin/quiz" element={<QuizPage />} />
               <Route path="/admin/quiz/:id/edit" element={<QuizEditorPage />} />
               <Route path="/admin/conseillers" element={<ConseillersPage />} />
@@ -78,6 +84,9 @@ export default function App() {
               <Route path="/superadmin/eleves" element={<ElevesPage />} />
               <Route path="/superadmin/parents" element={<ParentsPage />} />
               <Route path="/superadmin/filieres" element={<FilieresPage />} />
+              <Route path="/superadmin/metiers" element={<MetiersPage />} />
+              <Route path="/superadmin/series" element={<SeriesPage />} />
+              <Route path="/superadmin/etablissements" element={<EtablissementsPage />} />
               <Route path="/superadmin/quiz" element={<QuizPage />} />
               <Route path="/superadmin/quiz/:id/edit" element={<QuizEditorPage />} />
               <Route path="/superadmin/conseillers" element={<ConseillersPage />} />

@@ -33,12 +33,20 @@ class ApiService extends BaseService {
   Future<void> logout() => auth.logout();
   Future<Map<String, String>> getUtilisateurNom(String trackingId) => auth.getUtilisateurNom(trackingId);
   Future<EleveResponse> getEleve(String id) => auth.getEleve(id);
+  Future<EleveResponse> getEleveByEmail(String email) async {
+    final res = await dio.get('/api/v1/eleves/by-email/$email');
+    return EleveResponse.fromJson(res.data);
+  }
   Future<EleveResponse> inscrireEleve(EleveRequest req) => auth.inscrireEleve(req);
   Future<EleveResponse> modifierEleve(String id, EleveRequest req) async {
     final res = await dio.put('/api/v1/eleves/$id', data: req.toJson());
     return EleveResponse.fromJson(res.data);
   }
   Future<ParentResponse> getParent(String id) => auth.getParent(id);
+  Future<ParentResponse> modifierParent(String id, Map<String, dynamic> data) async {
+    final res = await dio.put('/api/v1/parents/$id', data: data);
+    return ParentResponse.fromJson(res.data);
+  }
   Future<ConseillerResponse> getConseiller(String id) => auth.getConseiller(id);
   Future<List<ConseillerResponse>> getConseillers({int page = 0, int size = 100}) => auth.getConseillers(page: page, size: size);
   
@@ -91,6 +99,7 @@ class ApiService extends BaseService {
   Future<List<DisponibiliteResponse>> getDisponibilitesConseiller(String id) => interaction.getDisponibilitesConseiller(id);
   Future<RendezVousResponse> planifierRDV(RendezVousRequest req) => interaction.planifierRDV(req);
   Future<void> annulerRDV(String id) => interaction.annulerRDV(id);
+  Future<RendezVousResponse> terminerRDV(String id) => interaction.terminerRDV(id);
   
   Future<List<NotificationResponse>> getNotifications(String id) => interaction.getNotificationsUtilisateur(id);
   Future<List<NotificationResponse>> getNotificationsNonLues(String id) async {

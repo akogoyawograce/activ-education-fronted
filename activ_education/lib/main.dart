@@ -21,6 +21,7 @@ import 'screens/explorer/explorer_screen.dart';
 import 'screens/explorer/favorites_screen.dart';
 import 'screens/explorer/fiche_detail_screen.dart';
 import 'screens/search/global_search_screen.dart';
+import 'screens/conseillers/conseillers_screen.dart';
 import 'screens/diagnostic/quiz_screen.dart';
 import 'screens/diagnostic/resultats_screen.dart';
 import 'screens/diagnostic/notes_screen.dart'; // ← Import ajouté
@@ -30,7 +31,6 @@ import 'screens/messages/rdv_screen.dart';
 import 'screens/home/notifications_screen.dart';
 import 'screens/home/faq_screen.dart';
 import 'screens/home/enfant_suivi_screen.dart';
-import 'screens/home/diagnostic_enfant_screen.dart';
 import 'screens/messages/rdv_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/errors/not_found_screen.dart';
@@ -57,6 +57,7 @@ class ActivEducationApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       initialRoute: AppRoutes.splash,
+      navigatorObservers: [AppRoutes.routeObserver],
       routes: {
         // Auth
         AppRoutes.splash: (_) => const SplashScreen(),
@@ -95,8 +96,8 @@ class ActivEducationApp extends StatelessWidget {
         AppRoutes.chat: (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
-          final expediteurId = args?['expediteurId'] as String;
-          final expediteurNom = args?['expediteurNom'] as String;
+          final expediteurId = args?['expediteurId'] as String? ?? '';
+          final expediteurNom = args?['expediteurNom'] as String? ?? '';
           return ChatScreen(
               expediteurId: expediteurId, expediteurNom: expediteurNom);
         },
@@ -118,17 +119,12 @@ class ActivEducationApp extends StatelessWidget {
         },
         AppRoutes.search: (_) => const GlobalSearchScreen(),
         AppRoutes.faq: (_) => const FaqScreen(),
+        AppRoutes.conseillers: (_) => const ConseillersScreen(),
         AppRoutes.enfantSuivi: (context) {
           final args = ModalRoute.of(context)?.settings.arguments
               as Map<String, dynamic>?;
           final enfantId = args?['enfantTrackingId'] as String;
           return EnfantSuiviScreen(enfantTrackingId: enfantId);
-        },
-        AppRoutes.diagnosticEnfant: (context) {
-          final args = ModalRoute.of(context)?.settings.arguments
-              as Map<String, dynamic>?;
-          final enfantId = args?['enfantId'] as String;
-          return DiagnosticEnfantScreen(enfantId: enfantId);
         },
         AppRoutes.rdvList: (_) => const RdvListScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),

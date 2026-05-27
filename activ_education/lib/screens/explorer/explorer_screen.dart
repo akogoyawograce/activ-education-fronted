@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
+import '../../widgets/common_widgets.dart';
 import '../errors/empty_content_screen.dart';
 import 'fiche_detail_screen.dart';
 import 'category_list_screen.dart';
@@ -75,25 +76,21 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   }
 
   Future<void> _loadAll() async {
-    try {
-      setState(() => _isLoading = true);
-      final results = await Future.wait([
-        _api.listerSeries(size: 20),
-        _api.listerFilieres(size: 20),
-        _api.listerMetiers(size: 20),
-        _api.listerEtablissements(size: 20),
-      ]);
-      setState(() {
-        _series = (results[0] as PageResponse<FicheSerieResponse>).content;
-        _filieres = (results[1] as PageResponse<FicheFiliereResponse>).content;
-        _metiers = (results[2] as PageResponse<FicheMetierResponse>).content;
-        _etablissements =
-            (results[3] as PageResponse<FicheEtablissementResponse>).content;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
-    }
+    setState(() => _isLoading = true);
+    _api.listerSeries(size: 20).then((r) {
+      if (mounted) setState(() => _series = r.content);
+    }).catchError((_) {});
+    _api.listerFilieres(size: 20).then((r) {
+      if (mounted) setState(() => _filieres = r.content);
+    }).catchError((_) {});
+    _api.listerMetiers(size: 20).then((r) {
+      if (mounted) setState(() => _metiers = r.content);
+    }).catchError((_) {});
+    _api.listerEtablissements(size: 50).then((r) {
+      if (mounted) setState(() => _etablissements = r.content);
+    }).catchError((_) {});
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (mounted) setState(() => _isLoading = false);
   }
 
   // Filtre de recherche
@@ -577,7 +574,6 @@ class _FicheCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -592,66 +588,131 @@ class _FicheCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Badge type
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: _typeColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(
-                _typeLabel,
-                style: TextStyle(
-                  fontFamily: 'Inter',
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: _typeColor,
+            // Image
+            if (fiche.imageUrl != null && fiche.imageUrl!.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                child: Stack(
+                  children: [
+                    AuthImage(
+                      imageUrl: fiche.imageUrl,
+                      height: 120,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, progress) {
+                        if (progress == null) return child;
+                        return Container(
+                          height: 120,
+                          color: _typeColor.withValues(alpha: 0.08),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation(_typeColor),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              ),
-            ),
-            const Spacer(),
-            Text(
-              fiche.titre,
-              style: AppTextStyles.label.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _subtitle,
-              style: AppTextStyles.caption,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Favoris
-                GestureDetector(
-                  onTap: () {},
-                  child: const Icon(
-                    Icons.favorite_border_rounded,
-                    size: 18,
-                    color: AppColors.textLight,
+                if (fiche.videoUrls.isNotEmpty)
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: const BoxDecoration(
+                        color: Colors.black54,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.play_arrow_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
                   ),
-                ),
-                // Flèche
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: _typeColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(Icons.chevron_right_rounded,
-                      size: 16, color: _typeColor),
-                ),
               ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Badge type
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: _typeColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _typeLabel,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: _typeColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    fiche.titre,
+                    style: AppTextStyles.label.copyWith(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _subtitle,
+                    style: AppTextStyles.caption,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    fiche.resume,
+                    style: AppTextStyles.caption,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Favoris
+                      GestureDetector(
+                        onTap: () {},
+                        child: const Icon(
+                          Icons.favorite_border_rounded,
+                          size: 18,
+                          color: AppColors.textLight,
+                        ),
+                      ),
+                      // Flèche
+                      Container(
+                        width: 24,
+                        height: 24,
+                        decoration: BoxDecoration(
+                          color: _typeColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.chevron_right_rounded,
+                            size: 16, color: _typeColor),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
