@@ -345,6 +345,14 @@ export interface ScoreMatriceResponse {
   createdAt: string
 }
 
+export interface ScoreMatriceRequest {
+  titreMatrice: string
+  scoreGoutsPersonnel?: number
+  scoreAcademique?: number
+  scoreMarcheTravail?: number
+  scoreTotalEstime?: number
+}
+
 export interface SeuilAdmissionResponse {
   trackingId: string
   matiereRequise: string

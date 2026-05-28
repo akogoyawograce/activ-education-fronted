@@ -143,7 +143,11 @@ abstract class BaseService {
             );
             debugPrint(
                 'Retry response: ${retryResponse.statusCode} for $method $path');
-            return handler.resolve(retryResponse);
+            if (retryResponse.statusCode != null && retryResponse.statusCode! >= 200 && retryResponse.statusCode! < 300) {
+              return handler.resolve(retryResponse);
+            }
+            debugPrint('Retry after refresh still failed with ${retryResponse.statusCode} — not an auth issue');
+            return handler.next(error);
           } catch (retryError) {
             debugPrint('Retry after refresh failed: $retryError');
             return handler.next(error);

@@ -26,6 +26,7 @@ import QuizEditorPage from '@/pages/admin/QuizEditorPage'
 import ConseillersPage from '@/pages/admin/ConseillersPage'
 import FAQModerationPage from '@/pages/admin/FAQModerationPage'
 import SeuilsPage from '@/pages/admin/SeuilsPage'
+import ScoreMatricesPage from '@/pages/admin/ScoreMatricesPage'
 import AdminStatistiquesPage from '@/pages/admin/AdminStatistiquesPage'
 import AdminProfilPage from '@/pages/admin/AdminProfilPage'
 import NotificationsPage from '@/pages/admin/NotificationsPage'
@@ -81,6 +82,7 @@ export default function App() {
               <Route path="/admin/conseillers" element={<ConseillersPage />} />
               <Route path="/admin/faq" element={<FAQModerationPage />} />
               <Route path="/admin/seuils" element={<SeuilsPage />} />
+              <Route path="/admin/matrices" element={<ScoreMatricesPage />} />
               <Route path="/admin/statistiques" element={<AdminStatistiquesPage />} />
               <Route path="/admin/profil" element={<AdminProfilPage />} />
               <Route path="/admin/notifications" element={<NotificationsPage />} />
@@ -104,6 +106,7 @@ export default function App() {
               <Route path="/superadmin/conseillers" element={<ConseillersPage />} />
               <Route path="/superadmin/faq" element={<FAQModerationPage />} />
               <Route path="/superadmin/seuils" element={<SeuilsPage />} />
+              <Route path="/superadmin/matrices" element={<ScoreMatricesPage />} />
               <Route path="/superadmin/statistiques" element={<AdminStatistiquesPage />} />
               <Route path="/superadmin/profil" element={<AdminProfilPage />} />
               <Route path="/superadmin/notifications" element={<NotificationsPage />} />

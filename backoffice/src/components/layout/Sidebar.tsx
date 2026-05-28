@@ -16,6 +16,7 @@ import {
   Settings,
   ClipboardList,
   Building2,
+  Table,
   LogOut,
   ChevronRight,
 } from 'lucide-react'
@@ -50,6 +51,7 @@ const ADMIN_NAV: NavItem[] = [
   { label: 'Conseillers', path: '/admin/conseillers', icon: Briefcase },
   { label: 'FAQ', path: '/admin/faq', icon: HelpCircle },
   { label: 'Seuils', path: '/admin/seuils', icon: ClipboardList },
+  { label: 'Matrices', path: '/admin/matrices', icon: Table },
   { label: 'Statistiques', path: '/admin/statistiques', icon: BarChart3 },
   { label: 'Mon Profil', path: '/admin/profil', icon: UserCircle },
 ]

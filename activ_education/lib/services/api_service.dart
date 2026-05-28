@@ -5,6 +5,7 @@ import 'explorer_service.dart';
 import 'diagnostic_service.dart';
 import 'interaction_service.dart';
 import 'file_service.dart';
+import 'score_matrice_service.dart';
 import 'base_service.dart';
 import '../models/models.dart';
 
@@ -20,6 +21,7 @@ class ApiService extends BaseService {
   final diagnostic = DiagnosticService();
   final interaction = InteractionService();
   final files = FileService();
+  final scoreMatrice = ScoreMatriceService();
 
   void init() {}
 
