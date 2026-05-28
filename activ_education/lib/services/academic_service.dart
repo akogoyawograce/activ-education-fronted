@@ -24,4 +24,9 @@ class AcademicService extends BaseService {
   Future<void> supprimerNote(String trackingId) async {
     await dio.delete('/api/v1/notes/$trackingId');
   }
+
+  Future<NoteResponse> getNote(String trackingId) async {
+    final res = await dio.get('/api/v1/notes/$trackingId');
+    return NoteResponse.fromJson(res.data);
+  }
 }

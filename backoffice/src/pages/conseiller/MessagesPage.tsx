@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
-import { MessageSquare, Send, Search, Plus, ArrowLeft, Check, CheckCheck } from 'lucide-react'
+import { MessageSquare, Send, Search, Plus, ArrowLeft, Check, CheckCheck, Trash2 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import * as messageService from '@/api/messages'
 import UserAvatar from '@/components/ui/UserAvatar'
@@ -88,6 +88,13 @@ export default function MessagesPage() {
     enabled: !!trackingId,
   })
 
+  const { data: nonLusData } = useQuery({
+    queryKey: ['messages-non-lus', trackingId],
+    queryFn: () => messageService.getNonLus(trackingId!),
+    enabled: !!trackingId,
+    refetchInterval: 10000,
+  })
+
   const recus = recusPage?.content ?? []
   const envoyes = envoyesPage?.content ?? []
   const conversations = groupConversations(recus, envoyes)
@@ -142,6 +149,15 @@ export default function MessagesPage() {
       setSelectedContact(variables.destinataireTrackingId)
       queryClient.invalidateQueries({ queryKey: ['messages-recus', trackingId] })
       queryClient.invalidateQueries({ queryKey: ['messages-envoyes', trackingId] })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (trackingId: string) => messageService.removeMessage(trackingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['conversation', trackingId, selectedContact] })
+      queryClient.invalidateQueries({ queryKey: ['messages-envoyes', trackingId] })
+      queryClient.invalidateQueries({ queryKey: ['messages-recus', trackingId] })
     },
   })
 
@@ -281,10 +297,10 @@ export default function MessagesPage() {
             {conversationMessages.map((msg) => {
               const isMine = msg.expediteurTrackingId === trackingId
               return (
-                <div
-                  key={msg.trackingId}
-                  className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
-                >
+                  <div
+                    key={msg.trackingId}
+                    className={`flex group ${isMine ? 'justify-end' : 'justify-start'}`}
+                  >
                   <div
                     className={`max-w-[75%] px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       isMine
@@ -313,6 +329,17 @@ export default function MessagesPage() {
                         )
                       )}
                     </div>
+                    {isMine && (
+                      <div className="flex justify-end mt-1">
+                        <button
+                          onClick={() => deleteMutation.mutate(msg.trackingId)}
+                          className="p-1 rounded hover:bg-white/20 transition-colors opacity-0 group-hover:opacity-100"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="size-3 text-white/60" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
@@ -376,6 +403,12 @@ export default function MessagesPage() {
             {conversations.length} conversation{conversations.length > 1 ? 's' : ''}
           </p>
         </div>
+        {nonLusData && nonLusData.nonLus > 0 && (
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium">
+            <span className="size-2 rounded-full bg-primary" />
+            {nonLusData.nonLus} non lu{nonLusData.nonLus > 1 ? 's' : ''}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 bg-card rounded-[12px] border border-border overflow-hidden flex">

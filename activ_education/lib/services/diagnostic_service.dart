@@ -50,4 +50,13 @@ class DiagnosticService extends BaseService {
     final res = await dioGet('/api/v1/quiz/recommandations/$eleveId/$quizId', queryParameters: {'nombre': nombre});
     return (res.data as List).map((e) => QuestionResponse.fromJson(e)).toList();
   }
+
+  Future<void> supprimerResultat(String trackingId) async {
+    await dio.delete('/api/v1/resultats-diagnostic/$trackingId');
+  }
+
+  Future<ResultatDiagnosticResponse> getResultat(String trackingId) async {
+    final res = await dio.get('/api/v1/resultats-diagnostic/$trackingId');
+    return ResultatDiagnosticResponse.fromJson(res.data);
+  }
 }

@@ -46,6 +46,12 @@ export default function NotificationsPage() {
     enabled: !!trackingId,
   })
 
+  const { data: nonLues = [] } = useQuery({
+    queryKey: ['notifications', 'non-lues', trackingId],
+    queryFn: () => notificationsService.getNonLues(trackingId!),
+    enabled: !!trackingId,
+  })
+
   const markReadMutation = useMutation({
     mutationFn: (id: string) => notificationsService.markAsRead(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
@@ -69,7 +75,7 @@ export default function NotificationsPage() {
     <div className="p-6 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <PageHeader
-          title="Notifications"
+          title={`Notifications${nonLues.length > 0 ? ` (${nonLues.length} non lues)` : ''}`}
           description="Consultez toutes vos notifications"
         />
         <div className="flex items-center gap-3">

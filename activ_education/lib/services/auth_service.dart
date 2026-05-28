@@ -53,6 +53,17 @@ class AuthService extends BaseService {
     AuthImage.clearTokenCache();
   }
 
+  Future<void> logoutAll() async {
+    try {
+      await dio.post('/api/v1/auth/logout-all');
+    } catch (_) {}
+    BaseService.clearCache();
+    BaseService.clearUserCache();
+    await storage.deleteAll();
+    _nomCache.clear();
+    AuthImage.clearTokenCache();
+  }
+
   // Registration (public endpoints)
   Future<EleveResponse> inscrireEleve(EleveRequest request) async {
     final res = await dio.post('/api/v1/eleves', data: request.toJson());

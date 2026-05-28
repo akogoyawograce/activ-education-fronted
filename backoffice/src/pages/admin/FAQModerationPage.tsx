@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, X, RotateCcw, MessageCircle } from 'lucide-react'
+import { Check, X, RotateCcw, MessageCircle, Plus, Trash2 } from 'lucide-react'
 import * as bibliothequeService from '@/api/bibliotheque'
 import StatusBadge from '@/components/ui/StatusBadge'
 import PageHeader from '@/components/shared/PageHeader'
 import { SkeletonCard } from '@/components/ui/Skeleton'
+import Modal from '@/components/ui/Modal'
+import type { FAQRequest } from '@/types'
 
 type TabFilter = 'EN_ATTENTE' | 'PUBLIEE' | 'REFUSEE'
 
@@ -14,14 +16,39 @@ const TABS: { key: TabFilter; label: string }[] = [
   { key: 'REFUSEE', label: 'Refusée' },
 ]
 
+const CATEGORIES = ['ORIENTATION', 'INSCRIPTION', 'BOURSE', 'FILIERE', 'METIER', 'GENERAL'] as const
+
 export default function FAQModerationPage() {
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState<TabFilter>('EN_ATTENTE')
   const [page, setPage] = useState(1)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [form, setForm] = useState<FAQRequest>({
+    question: '',
+    reponse: '',
+    categorie: 'GENERAL',
+    estPublie: false,
+  })
 
   const { data, isLoading } = useQuery({
     queryKey: ['faq-moderation', page],
     queryFn: () => bibliothequeService.getAllFAQ(page - 1, 20),
+  })
+
+  const createMutation = useMutation({
+    mutationFn: (data: FAQRequest) => bibliothequeService.createFAQ(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['faq-moderation'] })
+      setCreateOpen(false)
+      setForm({ question: '', reponse: '', categorie: 'GENERAL', estPublie: false })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (trackingId: string) => bibliothequeService.deleteFAQ(trackingId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['faq-moderation'] })
+    },
   })
 
   const togglePublishMutation = useMutation({
@@ -62,6 +89,15 @@ export default function FAQModerationPage() {
       <PageHeader
         title="Modération FAQ"
         description={`${data?.totalElements ?? 0} entrées`}
+        actions={
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-medium bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="size-4" />
+            Nouvelle FAQ
+          </button>
+        }
       />
 
       <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
@@ -163,6 +199,18 @@ export default function FAQModerationPage() {
                       Dépublier
                     </button>
                   )}
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Supprimer cette FAQ ?')) {
+                        deleteMutation.mutate(item.trackingId)
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="flex items-center gap-1.5 text-xs font-medium text-danger bg-danger-light px-3 py-1.5 rounded-lg hover:bg-red-200 transition-colors ml-auto disabled:opacity-50"
+                  >
+                    <Trash2 className="size-3.5" />
+                    Supprimer
+                  </button>
                 </div>
               </div>
             ))}
@@ -197,6 +245,67 @@ export default function FAQModerationPage() {
           )}
         </>
       )}
+
+      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Nouvelle FAQ">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Question</label>
+            <textarea
+              value={form.question}
+              onChange={(e) => setForm((f) => ({ ...f, question: e.target.value }))}
+              rows={3}
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-main outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Réponse</label>
+            <textarea
+              value={form.reponse}
+              onChange={(e) => setForm((f) => ({ ...f, reponse: e.target.value }))}
+              rows={4}
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-main outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Catégorie</label>
+            <select
+              value={form.categorie}
+              onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-text-main outline-none focus:ring-2 focus:ring-primary"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.estPublie}
+              onChange={(e) => setForm((f) => ({ ...f, estPublie: e.target.checked }))}
+              className="rounded border-border accent-primary"
+            />
+            <span className="text-sm text-text-main">Publiée</span>
+          </label>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              onClick={() => setCreateOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-text-secondary bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => createMutation.mutate(form)}
+              disabled={createMutation.isPending || !form.question.trim() || !form.reponse.trim()}
+              className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              {createMutation.isPending ? 'Création...' : 'Créer'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, MessageSquare, TrendingUp, Star } from 'lucide-react'
+import { Calendar, MessageSquare, TrendingUp, Users } from 'lucide-react'
 import { format, formatDistanceToNow, isToday, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuthStore } from '@/stores/authStore'
@@ -33,6 +33,11 @@ export default function ConseillerDashboard() {
     enabled: !!trackingId,
   })
 
+  const { data: disponibles, isLoading: loadingDisponibles } = useQuery({
+    queryKey: ['conseillers-disponibles'],
+    queryFn: () => conseillerService.getDisponibles(),
+  })
+
   const todayRdvs = (rendezVous ?? []).filter((r) => isToday(parseISO(r.dateHeurePrevue)))
   const nonLus = messagesPage?.content.filter((m) => !m.lu).length ?? 0
   const totalMessages = messagesPage?.totalElements ?? 0
@@ -40,7 +45,7 @@ export default function ConseillerDashboard() {
 
   const messages = messagesPage?.content ?? []
 
-  if (loadingRdvs || loadingMsgs || loadingProfil) {
+  if (loadingRdvs || loadingMsgs || loadingProfil || loadingDisponibles) {
     return (
       <div className="space-y-6">
         <div>
@@ -95,12 +100,10 @@ export default function ConseillerDashboard() {
           trendLabel="ce mois"
         />
         <StatCard
-          title="Satisfaction"
-          value="4.8/5"
-          icon={Star}
+          title="Conseillers disponibles"
+          value={disponibles?.length ?? 0}
+          icon={Users}
           color="blue"
-          trend={2}
-          trendLabel="ce mois"
         />
       </div>
 

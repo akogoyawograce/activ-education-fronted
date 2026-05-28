@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Save } from 'lucide-react'
+import { Pencil, Save, Plus, Trash2, Search } from 'lucide-react'
 import * as seuilService from '@/api/seuils'
 import type { SeuilAdmissionResponse } from '@/types'
 import Modal from '@/components/ui/Modal'
@@ -10,10 +10,20 @@ export default function SeuilsPage() {
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<SeuilAdmissionResponse | null>(null)
   const [editValue, setEditValue] = useState(0)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState({
+    filiereTrackingId: '',
+    matiereRequise: '',
+    noteMinimum: 10,
+  })
+  const [filterFiliereId, setFilterFiliereId] = useState('')
 
   const { data, isLoading } = useQuery({
-    queryKey: ['seuils'],
-    queryFn: () => seuilService.getAll(),
+    queryKey: ['seuils', filterFiliereId],
+    queryFn: () =>
+      filterFiliereId.trim()
+        ? seuilService.getByFiliere(filterFiliereId.trim())
+        : seuilService.getAll(),
   })
 
   const updateMutation = useMutation({
@@ -31,6 +41,27 @@ export default function SeuilsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['seuils'] })
       setEditTarget(null)
+    },
+  })
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      seuilService.create({
+        filiereTrackingId: createForm.filiereTrackingId,
+        matiereRequise: createForm.matiereRequise,
+        noteMinimum: createForm.noteMinimum,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seuils'] })
+      setCreateOpen(false)
+      setCreateForm({ filiereTrackingId: '', matiereRequise: '', noteMinimum: 10 })
+    },
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => seuilService.remove(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['seuils'] })
     },
   })
 
@@ -53,7 +84,27 @@ export default function SeuilsPage() {
       <PageHeader
         title="Seuils d'admission"
         description={`${data?.length ?? 0} seuils configurés`}
+        actions={
+          <button
+            onClick={() => setCreateOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors"
+          >
+            <Plus className="size-4" />
+            Nouveau seuil
+          </button>
+        }
       />
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-text-secondary" />
+        <input
+          type="text"
+          value={filterFiliereId}
+          onChange={(e) => setFilterFiliereId(e.target.value)}
+          placeholder="Filtrer par trackingId de filière…"
+          className="w-full max-w-sm pl-9 pr-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+        />
+      </div>
 
       {isLoading ? (
         <div className="bg-card rounded-[12px] border border-border p-8">
@@ -99,13 +150,27 @@ export default function SeuilsPage() {
                     <span className="font-semibold text-primary">{item.noteMinimum}/20</span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => openEdit(item)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-primary hover:bg-primary-light px-2.5 py-1.5 rounded-lg transition-colors"
-                    >
-                      <Pencil className="size-3.5" />
-                      Modifier
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => openEdit(item)}
+                        className="flex items-center gap-1.5 text-xs font-medium text-primary hover:bg-primary-light px-2.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        <Pencil className="size-3.5" />
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Supprimer ce seuil pour ${item.filiereTitre || item.filiereTrackingId} ?`)) {
+                            deleteMutation.mutate(item.trackingId)
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                        className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                      >
+                        <Trash2 className="size-3.5" />
+                        Supprimer
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -174,6 +239,85 @@ export default function SeuilsPage() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Nouveau seuil d'admission"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">
+              TrackingId de la filière
+            </label>
+            <input
+              type="text"
+              value={createForm.filiereTrackingId}
+              onChange={(e) =>
+                setCreateForm((prev) => ({ ...prev, filiereTrackingId: e.target.value }))
+              }
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">
+              Matière requise
+            </label>
+            <input
+              type="text"
+              value={createForm.matiereRequise}
+              onChange={(e) =>
+                setCreateForm((prev) => ({ ...prev, matiereRequise: e.target.value }))
+              }
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">
+              Note minimum (sur 20)
+            </label>
+            <input
+              type="number"
+              min={0}
+              max={20}
+              step={0.5}
+              value={createForm.noteMinimum}
+              onChange={(e) =>
+                setCreateForm((prev) => ({
+                  ...prev,
+                  noteMinimum: parseFloat(e.target.value) || 0,
+                }))
+              }
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => setCreateOpen(false)}
+              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-main border border-border rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => createMutation.mutate()}
+              disabled={
+                createMutation.isPending ||
+                !createForm.filiereTrackingId.trim() ||
+                !createForm.matiereRequise.trim()
+              }
+              className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {createMutation.isPending ? (
+                <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Save className="size-4" />
+              )}
+              Créer
+            </button>
+          </div>
+        </div>
       </Modal>
     </div>
   )

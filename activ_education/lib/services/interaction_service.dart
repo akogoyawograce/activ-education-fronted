@@ -57,6 +57,21 @@ class InteractionService extends BaseService {
     return (res.data as List).map((e) => DisponibiliteResponse.fromJson(e)).toList();
   }
 
+  Future<List<ConseillerResponse>> getConseillersDisponibles({int seuil = 5}) async {
+    final res = await dio.get('/api/v1/conseillers/disponibles', queryParameters: {'seuil': seuil});
+    return (res.data as List).map((e) => ConseillerResponse.fromJson(e)).toList();
+  }
+
+  Future<RendezVousResponse> modifierRDV(String rdvId, RendezVousRequest request) async {
+    final res = await dio.put('/api/v1/rendez-vous/$rdvId', data: request.toJson());
+    return RendezVousResponse.fromJson(res.data);
+  }
+
+  Future<RendezVousResponse> getRDV(String trackingId) async {
+    final res = await dio.get('/api/v1/rendez-vous/$trackingId');
+    return RendezVousResponse.fromJson(res.data);
+  }
+
   // Notifications
   Future<List<NotificationResponse>> getNotificationsUtilisateur(String utilisateurId) async {
     final res = await dio.get('/api/v1/utilisateurs/$utilisateurId/notifications');
