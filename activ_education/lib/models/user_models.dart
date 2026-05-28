@@ -53,6 +53,7 @@ class EleveRequest {
   final TypeApprenant typeApprenant;
   final List<String>? matieresPreferees;
   final String? styleApprentissage;
+  final String? metierSouhaite;
 
   EleveRequest({
     required this.nom,
@@ -66,6 +67,7 @@ class EleveRequest {
     required this.typeApprenant,
     this.matieresPreferees,
     this.styleApprentissage,
+    this.metierSouhaite,
   });
 
   Map<String, dynamic> toJson() => {
@@ -80,6 +82,7 @@ class EleveRequest {
         'typeApprenant': typeApprenant.name,
         if (matieresPreferees != null) 'matieresPreferees': matieresPreferees,
         if (styleApprentissage != null) 'styleApprentissage': styleApprentissage,
+        if (metierSouhaite != null) 'metierSouhaite': metierSouhaite,
       };
 }
 
@@ -95,6 +98,7 @@ class EleveResponse {
   final String typeApprenant;
   final List<String>? matieresPreferees;
   final String? styleApprentissage;
+  final String? metierSouhaite;
   final bool actif;
   final DateTime? createdAt;
 
@@ -110,6 +114,7 @@ class EleveResponse {
     required this.typeApprenant,
     this.matieresPreferees,
     this.styleApprentissage,
+    this.metierSouhaite,
     required this.actif,
     this.createdAt,
   });
@@ -126,6 +131,7 @@ class EleveResponse {
         typeApprenant: json['typeApprenant'] ?? 'AUTRE',
         matieresPreferees: json['matieresPreferees'] != null ? List<String>.from(json['matieresPreferees']) : null,
         styleApprentissage: json['styleApprentissage'],
+        metierSouhaite: json['metierSouhaite'],
         actif: json['actif'] ?? true,
         createdAt: json['createdAt'] != null
             ? DateTime.tryParse(json['createdAt'])

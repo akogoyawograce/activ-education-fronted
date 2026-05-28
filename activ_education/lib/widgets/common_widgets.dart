@@ -179,51 +179,6 @@ class DotIndicator extends StatelessWidget {
   }
 }
 
-// ─── Social Button (Google) ────────────────────────────────────────────────
-class SocialButton extends StatelessWidget {
-  final String label;
-  final String iconAsset;
-  final VoidCallback? onPressed;
-
-  const SocialButton({
-    super.key,
-    required this.label,
-    required this.iconAsset,
-    this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: OutlinedButton(
-        onPressed: onPressed,
-        style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textDark,
-          side: const BorderSide(color: AppColors.cardBorder, width: 1.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          backgroundColor: Colors.white,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(iconAsset, width: 22, height: 22, cacheWidth: 22, cacheHeight: 22),
-            const SizedBox(width: 10),
-            Text(
-              label,
-              style: AppTextStyles.bodyLarge.copyWith(
-                color: AppColors.textDark,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 // ─── Divider with text ─────────────────────────────────────────────────────
 class DividerWithText extends StatelessWidget {
   final String text;
@@ -263,24 +218,39 @@ class AuthImage extends StatefulWidget {
     this.errorBuilder,
   });
 
+  /// Call on logout to clear the cached JWT token
+  static void clearTokenCache() => _AuthImageState.clearTokenCache();
+
   @override
   State<AuthImage> createState() => _AuthImageState();
 }
 
 class _AuthImageState extends State<AuthImage> {
-  final _storage = const FlutterSecureStorage();
-  String? _token;
-  bool _loaded = false;
+  static String? _cachedToken;
+  static bool _tokenLoaded = false;
+  static Future<void>? _tokenFuture;
 
   @override
   void initState() {
     super.initState();
-    _loadToken();
+    _ensureToken();
   }
 
-  Future<void> _loadToken() async {
-    final token = await _storage.read(key: 'auth_token');
-    if (mounted) setState(() { _token = token; _loaded = true; });
+  static void clearTokenCache() {
+    _cachedToken = null;
+    _tokenLoaded = false;
+    _tokenFuture = null;
+  }
+
+  static Future<void> _ensureToken() async {
+    if (_tokenLoaded) return;
+    if (_tokenFuture != null) return _tokenFuture;
+    _tokenFuture = () async {
+      const storage = FlutterSecureStorage();
+      _cachedToken = await storage.read(key: 'auth_token');
+      _tokenLoaded = true;
+    }();
+    return _tokenFuture;
   }
 
   @override
@@ -288,11 +258,11 @@ class _AuthImageState extends State<AuthImage> {
     final url = resolveImageUrl(widget.imageUrl);
     if (url == null) return const SizedBox.shrink();
 
-    if (!_loaded) {
+    if (!_tokenLoaded) {
       return _placeholder();
     }
 
-    final headers = _token != null ? {'Authorization': 'Bearer $_token'} : null;
+    final headers = _cachedToken != null ? {'Authorization': 'Bearer $_cachedToken'} : null;
     final cacheH = widget.height != null && widget.height!.isFinite ? widget.height!.toInt() : null;
 
     return Image.network(

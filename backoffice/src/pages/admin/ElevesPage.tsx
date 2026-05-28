@@ -135,6 +135,14 @@ export default function ElevesPage() {
                 <span className="text-text-secondary block">Filière</span>
                 <span className="text-text-main font-medium">{selected.filiere || '-'}</span>
               </div>
+              <div>
+                <span className="text-text-secondary block">Métier souhaité</span>
+                <span className="text-text-main font-medium">{selected.metierSouhaite || '-'}</span>
+              </div>
+              <div>
+                <span className="text-text-secondary block">Matières préférées</span>
+                <span className="text-text-main font-medium">{selected.matieresPreferees?.join(', ') || '-'}</span>
+              </div>
             </div>
           </div>
         )}

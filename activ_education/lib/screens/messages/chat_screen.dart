@@ -18,16 +18,18 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _api = ApiService();
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   Timer? _pollingTimer;
+  String? _lastMessageId;
 
   List<MessageResponse> _messages = [];
   String? _userTrackingId;
   bool _isLoading = true;
   bool _isSending = false;
+  bool _isForeground = true;
 
   static final _uuidRegex = RegExp(
     r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
@@ -40,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (_expediteurIdInvalide) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -56,9 +59,25 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     _loadMessages(showLoading: true);
-    // Start polling for new messages every 4 seconds
-    _pollingTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
-      if (mounted && !_isSending) {
+    _startPolling();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isForeground = state == AppLifecycleState.resumed;
+    if (_isForeground) {
+      _startPolling();
+      _loadMessages(showLoading: false);
+    } else {
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
+    }
+  }
+
+  void _startPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
+      if (mounted && !_isSending && _isForeground) {
         _loadMessages(showLoading: false);
       }
     });
@@ -66,18 +85,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
     _scrollController.dispose();
     _pollingTimer?.cancel();
     super.dispose();
-  }
-
-  bool _listEquals(List<MessageResponse> a, List<MessageResponse> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i].trackingId != b[i].trackingId) return false;
-    }
-    return true;
   }
 
   Future<void> _loadMessages({bool showLoading = true}) async {
@@ -92,10 +104,12 @@ class _ChatScreenState extends State<ChatScreen> {
         _userTrackingId!,
       );
 
-      if (!showLoading && _listEquals(messages, _messages)) return;
+      final newLastId = messages.isNotEmpty ? messages.last.trackingId : null;
+      if (!showLoading && newLastId == _lastMessageId && messages.length == _messages.length) return;
 
       setState(() {
         _messages = messages;
+        _lastMessageId = newLastId;
         if (showLoading) _isLoading = false;
       });
 

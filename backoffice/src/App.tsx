@@ -28,12 +28,22 @@ import FAQModerationPage from '@/pages/admin/FAQModerationPage'
 import SeuilsPage from '@/pages/admin/SeuilsPage'
 import AdminStatistiquesPage from '@/pages/admin/AdminStatistiquesPage'
 import AdminProfilPage from '@/pages/admin/AdminProfilPage'
+import NotificationsPage from '@/pages/admin/NotificationsPage'
 
 import SuperAdminDashboard from '@/pages/superadmin/SuperAdminDashboard'
 import ParametresPage from '@/pages/superadmin/ParametresPage'
 import LogsPage from '@/pages/superadmin/LogsPage'
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+})
 
 export default function App() {
   return (
@@ -52,6 +62,7 @@ export default function App() {
               <Route path="/conseiller/utilisateurs" element={<UtilisateursPage />} />
               <Route path="/conseiller/profil" element={<ProfilPage />} />
               <Route path="/conseiller/statistiques" element={<StatistiquesPage />} />
+              <Route path="/conseiller/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
 
@@ -72,6 +83,7 @@ export default function App() {
               <Route path="/admin/seuils" element={<SeuilsPage />} />
               <Route path="/admin/statistiques" element={<AdminStatistiquesPage />} />
               <Route path="/admin/profil" element={<AdminProfilPage />} />
+              <Route path="/admin/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
 
@@ -94,6 +106,7 @@ export default function App() {
               <Route path="/superadmin/seuils" element={<SeuilsPage />} />
               <Route path="/superadmin/statistiques" element={<AdminStatistiquesPage />} />
               <Route path="/superadmin/profil" element={<AdminProfilPage />} />
+              <Route path="/superadmin/notifications" element={<NotificationsPage />} />
             </Route>
           </Route>
 

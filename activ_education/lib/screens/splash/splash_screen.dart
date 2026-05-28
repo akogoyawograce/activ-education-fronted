@@ -77,14 +77,16 @@ class _SplashScreenState extends State<SplashScreen>
       }
     });
 
+    // Vérifier le token en parallèle de l'animation
+    final api = ApiService();
+    final tokenCheck = api.getAccessToken();
+    final trackingIdCheck = api.getTrackingId();
+
     _controller.forward().then((_) async {
-      await Future.delayed(const Duration(milliseconds: 300));
       if (!mounted) return;
 
-      // Vérifier si l'utilisateur est déjà connecté (JWT token présent et valide)
-      final api = ApiService();
-      final token = await api.getAccessToken();
-      final trackingId = await api.getTrackingId();
+      final token = await tokenCheck;
+      final trackingId = await trackingIdCheck;
       if (token != null && trackingId != null && _isTokenValid(token)) {
         Navigator.pushReplacementNamed(context, AppRoutes.home);
       } else {
@@ -120,54 +122,32 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.primary,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, child) {
             return Stack(
               children: [
-                // Center content
                 Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Logo card
                       FadeTransition(
                         opacity: _logoFade,
                         child: ScaleTransition(
                           scale: _logoScale,
-                          child: Container(
-                            width: 110,
-                            height: 110,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.18),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 12),
-                                ),
-                              ],
-                            ),
-                            child: ClipOval(
-                              child: Image.asset(
-                                'assets/images/logo.jpeg',
-                                width: 50,
-                                height: 50,
-                                cacheWidth: 50,
-                                cacheHeight: 50,
-                                fit: BoxFit.cover,
-                              ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/images/logo.jpeg',
+                              width: 110,
+                              height: 110,
+                              fit: BoxFit.cover,
                             ),
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 28),
-
-                      // App name
                       FadeTransition(
                         opacity: _textFade,
                         child: Column(
@@ -175,7 +155,7 @@ class _SplashScreenState extends State<SplashScreen>
                             Text(
                               'Activ Education',
                               style: AppTextStyles.displayLarge.copyWith(
-                                color: Colors.white,
+                                color: AppColors.primary,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 30,
                               ),
@@ -185,7 +165,7 @@ class _SplashScreenState extends State<SplashScreen>
                               'Trouve ta voie, construis ton avenir',
                               textAlign: TextAlign.center,
                               style: AppTextStyles.bodyLarge.copyWith(
-                                color: Colors.white.withValues(alpha: 0.75),
+                                color: AppColors.primary.withValues(alpha: 0.75),
                                 fontSize: 15,
                               ),
                             ),
@@ -195,8 +175,6 @@ class _SplashScreenState extends State<SplashScreen>
                     ],
                   ),
                 ),
-
-                // Bottom progress section
                 Positioned(
                   bottom: 40,
                   left: 32,
@@ -205,18 +183,17 @@ class _SplashScreenState extends State<SplashScreen>
                     opacity: _textFade,
                     child: Column(
                       children: [
-                        // Progress bar
                         ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: Container(
                             height: 3,
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: AppColors.primary.withValues(alpha: 0.15),
                             alignment: Alignment.centerLeft,
                             child: FractionallySizedBox(
                               widthFactor: _progressWidth.value,
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: AppColors.accent,
+                                  color: AppColors.primary,
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -227,7 +204,7 @@ class _SplashScreenState extends State<SplashScreen>
                         Text(
                           _statusText.toUpperCase(),
                           style: AppTextStyles.caption.copyWith(
-                            color: Colors.white.withValues(alpha: 0.6),
+                            color: AppColors.primary.withValues(alpha: 0.5),
                             letterSpacing: 1.5,
                             fontSize: 11,
                           ),
@@ -236,7 +213,7 @@ class _SplashScreenState extends State<SplashScreen>
                         Text(
                           'Lomé, Togo',
                           style: AppTextStyles.caption.copyWith(
-                            color: Colors.white.withValues(alpha: 0.4),
+                            color: AppColors.primary.withValues(alpha: 0.35),
                           ),
                         ),
                       ],

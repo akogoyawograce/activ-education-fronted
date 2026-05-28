@@ -64,6 +64,7 @@ class ApiService extends BaseService {
   Future<void> supprimerFavori(String id) => explorer.supprimerFavori(id);
   Future<List<String>> getEtablissementsList() => explorer.getEtablissementsList();
   Future<List<String>> getFilieresList() => explorer.getFilieresList();
+  Future<List<String>> getVilles() => explorer.getVilles();
 
   // Recherche
   Future<List<RechercheGlobaleResponse>> rechercherGlobalement(String phrase, {int limite = 10}) =>
@@ -81,6 +82,8 @@ class ApiService extends BaseService {
   Future<PageResponse<ResultatDiagnosticResponse>> getResultatsEleve(String id, {int page = 0, int size = 10}) =>
       diagnostic.getResultatsEleve(id, page: page, size: size);
   Future<ResultatDiagnosticResponse?> getDernierResultat(String eId, String qId) => diagnostic.getDernierResultat(eId, qId);
+  Future<List<QuestionResponse>> recommanderQuestions(String eId, String qId, {int nombre = 20}) =>
+      diagnostic.recommanderQuestions(eId, qId, nombre: nombre);
   // Interaction
   Future<MessageResponse> envoyerMessage(String expId, MessageRequest req) async {
     final res = await dio.post('/api/v1/utilisateurs/$expId/messages', data: req.toJson());
@@ -89,6 +92,10 @@ class ApiService extends BaseService {
   Future<List<MessageResponse>> getConversation(String u1, String u2) => interaction.getConversation(u1, u2);
   Future<PageResponse<MessageResponse>> getMessagesRecus(String id, {int page = 0, int size = 20}) async {
     final res = await dio.get('/api/v1/utilisateurs/$id/messages/recus', queryParameters: {'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => MessageResponse.fromJson(json));
+  }
+  Future<PageResponse<MessageResponse>> getMessagesEnvoyes(String id, {int page = 0, int size = 20}) async {
+    final res = await dio.get('/api/v1/utilisateurs/$id/messages/envoyes', queryParameters: {'page': page, 'size': size});
     return PageResponse.fromJson(res.data, (json) => MessageResponse.fromJson(json));
   }
   Future<int> getMessagesNonLus(String id) => interaction.getMessagesNonLus(id);

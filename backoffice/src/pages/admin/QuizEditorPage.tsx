@@ -5,11 +5,32 @@ import { ArrowLeft, Plus, Trash2, Save, GripVertical } from 'lucide-react'
 import * as quizService from '@/api/quiz'
 import type { QuestionResponse, ReponseResponse } from '@/types'
 
-type QuestionType = 'CHOIX_UNIQUE' | 'CHOIX_MULTIPLE' | 'TEXTE_LIBRE'
+const DOMAINES = [
+  'Sciences', 'Lettres', 'Langues', 'Technique', 'Arts',
+  'Sport', 'Sciences Humaines', 'Commerce', 'Administration',
+]
+
+const TYPES_QUESTION = [
+  { value: 'RIASEC', label: 'RIASEC' },
+  { value: 'CONNAISSANCE', label: 'Connaissance' },
+  { value: 'INTERET', label: 'Intérêt' },
+  { value: 'PERSONNALITE', label: 'Personnalité' },
+]
+
+const NIVEAUX = [
+  { value: '', label: 'Tous niveaux' },
+  { value: 'Ecolier', label: 'Écolier' },
+  { value: 'Collégien', label: 'Collégien' },
+  { value: 'Lycéen', label: 'Lycéen' },
+  { value: 'Étudiant', label: 'Étudiant' },
+  { value: 'Professionnel', label: 'Professionnel' },
+]
 
 interface OptionItem {
   id: string
   texte: string
+  categoriePoint?: string
+  points?: number
 }
 
 export default function QuizEditorPage() {
@@ -20,7 +41,11 @@ export default function QuizEditorPage() {
   const [questions, setQuestions] = useState<QuestionResponse[]>([])
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [questionText, setQuestionText] = useState('')
-  const [questionType, setQuestionType] = useState<QuestionType>('CHOIX_UNIQUE')
+  const [domaine, setDomaine] = useState('')
+  const [difficulte, setDifficulte] = useState(1)
+  const [tags, setTags] = useState('')
+  const [typeQuestion, setTypeQuestion] = useState('RIASEC')
+  const [niveauCible, setNiveauCible] = useState('')
   const [options, setOptions] = useState<OptionItem[]>([])
 
   const { data: quiz, isLoading: quizLoading } = useQuery({
@@ -45,10 +70,19 @@ export default function QuizEditorPage() {
     if (selectedIdx !== null && questions[selectedIdx]) {
       const q = questions[selectedIdx]
       setQuestionText(q.texteQuestion)
+      setDomaine(q.domaine ?? '')
+      setDifficulte(q.difficulte ?? 1)
+      setTags(q.tags ?? '')
+      setTypeQuestion(q.typeQuestion ?? 'RIASEC')
+      setNiveauCible(q.niveauCible ?? '')
       loadOptions(q.trackingId)
     } else {
       setQuestionText('')
-      setQuestionType('CHOIX_UNIQUE')
+      setDomaine('')
+      setDifficulte(1)
+      setTags('')
+      setTypeQuestion('RIASEC')
+      setNiveauCible('')
       setOptions([])
     }
   }, [selectedIdx, questions])
@@ -60,6 +94,8 @@ export default function QuizEditorPage() {
         reps.map((r: ReponseResponse) => ({
           id: r.trackingId,
           texte: r.texteReponse,
+          categoriePoint: r.categoriePoint,
+          points: r.points,
         })),
       )
     } catch {
@@ -82,10 +118,17 @@ export default function QuizEditorPage() {
 
   const saveQuestionMutation = useMutation({
     mutationFn: async () => {
-      if (selectedIdx === null) return
+      if (selectedIdx === null || !questions[selectedIdx]) return
       const q = questions[selectedIdx]
-      await quizService.update(id!, { titre: quiz?.titre ?? '', description: quiz?.description })
-      return q
+      await quizService.updateQuestion(q.trackingId, {
+        texteQuestion: questionText,
+        ordre: q.ordre,
+        niveauCible: niveauCible || undefined,
+        domaine: domaine || undefined,
+        difficulte: difficulte,
+        tags: tags || undefined,
+        typeQuestion: typeQuestion,
+      })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['quiz-questions', id] })
@@ -94,35 +137,56 @@ export default function QuizEditorPage() {
 
   if (quizLoading || questionsLoading) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
-        <div className="grid grid-cols-[320px_1fr] gap-6">
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-14 bg-gray-200 rounded-lg animate-pulse" />
-            ))}
-          </div>
+      <div className="space-y-6">
+        <div className="h-8 bg-gray-200 rounded w-64 animate-pulse" />
+        <div className="grid grid-cols-[320px_1fr] gap-6 items-start">
+          <div className="h-96 bg-gray-200 rounded-[12px] animate-pulse" />
           <div className="h-96 bg-gray-200 rounded-[12px] animate-pulse" />
         </div>
       </div>
     )
   }
 
+  const addReponseMutation = useMutation({
+    mutationFn: async (questionId: string) => {
+      const rep = await quizService.addReponse(questionId, { texteReponse: '' })
+      return rep
+    },
+    onSuccess: (rep) => {
+      setOptions((prev) => [...prev, { id: rep.trackingId, texte: rep.texteReponse, categoriePoint: rep.categoriePoint, points: rep.points }])
+    },
+  })
+
+  const updateReponseMutation = useMutation({
+    mutationFn: async ({ id, texte }: { id: string; texte: string }) => {
+      await quizService.updateReponse(id, { texteReponse: texte })
+    },
+  })
+
+  const removeReponseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await quizService.removeReponse(id)
+    },
+    onSuccess: (_data, id) => {
+      setOptions((prev) => prev.filter((o) => o.id !== id))
+    },
+  })
+
   function addOption() {
-    setOptions((prev) => [
-      ...prev,
-      { id: `new-${Date.now()}`, texte: '' },
-    ])
+    if (selectedIdx === null) return
+    const q = questions[selectedIdx]
+    addReponseMutation.mutate(q.trackingId)
   }
 
   function updateOption(id: string, texte: string) {
     setOptions((prev) =>
       prev.map((o) => (o.id === id ? { ...o, texte } : o)),
     )
+    updateReponseMutation.mutate({ id, texte })
   }
 
   function removeOption(id: string) {
-    setOptions((prev) => prev.filter((o) => o.id !== id))
+    removeReponseMutation.mutate(id)
   }
 
   const selectedQuestion =
@@ -213,75 +277,128 @@ export default function QuizEditorPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-text-main mb-1">
-                  Type de réponse
-                </label>
-                <select
-                  value={questionType}
-                  onChange={(e) => setQuestionType(e.target.value as QuestionType)}
-                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                >
-                  <option value="CHOIX_UNIQUE">Choix unique</option>
-                  <option value="CHOIX_MULTIPLE">Choix multiple</option>
-                  <option value="TEXTE_LIBRE">Texte libre</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-main mb-1">Type de question</label>
+                  <select
+                    value={typeQuestion}
+                    onChange={(e) => setTypeQuestion(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+                  >
+                    {TYPES_QUESTION.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-main mb-1">Domaine</label>
+                  <select
+                    value={domaine}
+                    onChange={(e) => setDomaine(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+                  >
+                    <option value="">Sélectionner...</option>
+                    {DOMAINES.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-main mb-1">Difficulté (1-5)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={difficulte}
+                    onChange={(e) => setDifficulte(Number(e.target.value))}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-main mb-1">Niveau cible</label>
+                  <select
+                    value={niveauCible}
+                    onChange={(e) => setNiveauCible(e.target.value)}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
+                  >
+                    {NIVEAUX.map((n) => (
+                      <option key={n.value} value={n.value}>{n.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {(questionType === 'CHOIX_UNIQUE' ||
-                questionType === 'CHOIX_MULTIPLE') && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-text-main">
-                      Options de réponse
-                    </label>
-                    <button
-                      onClick={addOption}
-                      className="text-xs font-medium text-primary hover:bg-primary-light px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
-                    >
-                      <Plus className="size-3" />
-                      Ajouter une option
-                    </button>
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-text-main mb-1">Tags (séparés par des virgules)</label>
+                <input
+                  type="text"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  placeholder="science, biologie, ADN"
+                />
+              </div>
 
-                  {options.length === 0 ? (
-                    <p className="text-sm text-text-secondary text-center py-4 border border-dashed border-border rounded-lg">
-                      Aucune option. Ajoutez-en une.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {options.map((opt) => (
-                        <div
-                          key={opt.id}
-                          className="flex items-center gap-2"
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-main">
+                    Options de réponse
+                  </label>
+                  <button
+                    onClick={addOption}
+                    className="text-xs font-medium text-primary hover:bg-primary-light px-2.5 py-1 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Plus className="size-3" />
+                    Ajouter une option
+                  </button>
+                </div>
+
+                {options.length === 0 ? (
+                  <p className="text-sm text-text-secondary text-center py-4 border border-dashed border-border rounded-lg">
+                    Aucune option. Ajoutez-en une.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {options.map((opt) => (
+                      <div key={opt.id} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={opt.texte}
+                          onChange={(e) =>
+                            updateOption(opt.id, e.target.value)
+                          }
+                          placeholder="Option..."
+                          className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                        />
+                        <select
+                          value={opt.categoriePoint ?? ''}
+                          onChange={(e) => {
+                            setOptions((prev) =>
+                              prev.map((o) => (o.id === opt.id ? { ...o, categoriePoint: e.target.value || undefined } : o)),
+                            )
+                          }}
+                          className="w-28 px-2 py-2 border border-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary bg-white"
                         >
-                          <input
-                            type="text"
-                            value={opt.texte}
-                            onChange={(e) =>
-                              updateOption(opt.id, e.target.value)
-                            }
-                            placeholder="Option..."
-                            className="flex-1 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                          />
-                          <button
-                            onClick={() => removeOption(opt.id)}
-                            className="p-2 text-text-secondary hover:text-danger hover:bg-danger-light rounded-lg transition-colors"
-                          >
-                            <Trash2 className="size-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {questionType === 'TEXTE_LIBRE' && (
-                <div className="bg-gray-50 rounded-lg p-4 text-sm text-text-secondary">
-                  Les réponses en texte libre seront stockées pour analyse.
-                </div>
-              )}
+                          <option value="">Catégorie</option>
+                          <option value="R">R (Réaliste)</option>
+                          <option value="I">I (Investigateur)</option>
+                          <option value="A">A (Artistique)</option>
+                          <option value="S">S (Social)</option>
+                          <option value="E">E (Entrepreneur)</option>
+                          <option value="C">C (Conventionnel)</option>
+                          <option value="NON_RENSEIGNE">Non renseigné</option>
+                        </select>
+                        <button
+                          onClick={() => removeOption(opt.id)}
+                          className="p-2 text-text-secondary hover:text-danger hover:bg-danger-light rounded-lg transition-colors"
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="flex justify-end pt-2">
                 <button

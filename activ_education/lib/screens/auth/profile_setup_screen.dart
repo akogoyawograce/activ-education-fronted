@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
+import '../../services/api_service.dart';
 import '../../widgets/common_widgets.dart';
 
 enum UserRole { collegien, lyceen, etudiant, parent, reconversion, decrocheur }
@@ -13,9 +14,23 @@ class ProfileSetupScreen extends StatefulWidget {
 }
 
 class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
+  final _api = ApiService();
   UserRole? _selectedRole;
   String? _selectedClass;
-  final TextEditingController _cityController = TextEditingController();
+  String? _selectedCity;
+  List<String> _villes = [];
+  bool _villesLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVilles();
+  }
+
+  Future<void> _loadVilles() async {
+    final villes = await _api.getVilles();
+    if (mounted) setState(() { _villes = villes; _villesLoading = false; });
+  }
 
   final List<_RoleOption> _roles = [
     const _RoleOption(role: UserRole.collegien, label: 'Collégien(ne)', icon: Icons.school_outlined),
@@ -41,11 +56,11 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool get _canContinue =>
       _selectedRole != null &&
       (!_showClassSelector || _selectedClass != null) &&
-      _cityController.text.isNotEmpty;
+      _selectedCity != null &&
+      _selectedCity!.isNotEmpty;
 
   @override
   void dispose() {
-    _cityController.dispose();
     super.dispose();
   }
 
@@ -56,7 +71,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       arguments: {
         'role': _selectedRole,
         'class': _selectedClass,
-        'city': _cityController.text,
+        'city': _selectedCity,
       },
     );
   }
@@ -156,7 +171,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           border: Border.all(color: AppColors.cardBorder, width: 1.5),
                         ),
                         child: DropdownButtonFormField<String>(
-                          value: _selectedClass,
+                          initialValue: _selectedClass,
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -179,33 +194,49 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     const SizedBox(height: 24),
                     const Text('Ville de résidence', style: AppTextStyles.label),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _cityController,
-                      onChanged: (_) => setState(() {}),
-                      style: AppTextStyles.bodyLarge
-                          .copyWith(color: AppColors.textDark),
-                      decoration: InputDecoration(
-                        hintText: 'Lomé, Kara, Sokodé...',
-                        prefixIcon: const Icon(Icons.location_on_outlined,
-                            color: AppColors.textLight, size: 18),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.cardBorder, width: 1.5),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.cardBorder, width: 1.5),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide:
-                              const BorderSide(color: AppColors.primary, width: 2),
-                        ),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.cardBorder, width: 1.5),
                       ),
+                      child: _villesLoading
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: 18, height: 18,
+                                    child: CircularProgressIndicator(strokeWidth: 2)),
+                                  SizedBox(width: 12),
+                                  Text('Chargement des villes...',
+                                      style: TextStyle(color: AppColors.textLight)),
+                                ],
+                              ),
+                            )
+                          : DropdownButtonFormField<String>(
+                              initialValue: _selectedCity,
+                              decoration: const InputDecoration(
+                                border: InputBorder.none,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              ),
+                              hint: Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined,
+                                      color: AppColors.textLight, size: 18),
+                                  const SizedBox(width: 8),
+                                  Text('Sélectionner une ville',
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(color: AppColors.textLight)),
+                                ],
+                              ),
+                              items: _villes
+                                  .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                                  .toList(),
+                              onChanged: (v) => setState(() => _selectedCity = v),
+                              icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                                  color: AppColors.textMedium),
+                              isExpanded: true,
+                            ),
                     ),
                     const SizedBox(height: 36),
                   ],

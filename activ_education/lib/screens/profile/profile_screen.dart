@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
 import '../errors/empty_content_screen.dart';
 import '../../utils/profile_completion.dart';
+import '../historique/historique_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -41,33 +42,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfile() async {
     try {
       final trackingId = await _api.getTrackingId();
+      if (!mounted) return;
       if (trackingId == null) {
         setState(() => _isLoading = false);
         return;
       }
       final role = await _api.getUserRole();
+      if (!mounted) return;
       if (role == 'PARENT') {
         _type = _ProfileType.parent;
         final parent = await _api.auth.getParent(trackingId);
+        if (!mounted) return;
         setState(() { _parent = parent; _isLoading = false; });
       } else if (role == 'ELEVE') {
         _type = _ProfileType.eleve;
         final eleve = await _api.getEleve(trackingId);
+        if (!mounted) return;
         setState(() { _eleve = eleve; _isLoading = false; });
       } else {
         final eleve = await _api.getEleve(trackingId);
+        if (!mounted) return;
         setState(() { _eleve = eleve; _isLoading = false; });
       }
     } catch (_) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _loadFavoris() async {
     try {
       final trackingId = await _api.getTrackingId();
+      if (!mounted) return;
       if (trackingId == null) return;
       final page = await _api.explorer.getFavorisUtilisateur(trackingId, page: 0, size: 3);
+      if (!mounted) return;
       setState(() { _favoris = page.content; _totalFavoris = page.totalElements; });
     } catch (_) {}
   }
@@ -75,11 +83,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadHistorique() async {
     try {
       final trackingId = await _api.getTrackingId();
+      if (!mounted) return;
       if (trackingId == null) return;
       final res = await _api.dio.get(
         '/api/v1/utilisateurs/$trackingId/historique',
         queryParameters: {'page': 0, 'size': 3},
       );
+      if (!mounted) return;
       final page = PageResponse<HistoriqueResponse>.fromJson(
         res.data, (json) => HistoriqueResponse.fromJson(json),
       );
@@ -99,6 +109,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String get _nomComplet => '$_prenom $_nom';
 
+  bool get _isLyceen => _eleve?.typeApprenant == 'LYCEEN';
+  bool get _isEtudiant => _eleve?.typeApprenant == 'ETUDIANT';
+  bool get _isCollegien => _eleve?.typeApprenant == 'COLLEGIEN';
+
+  String _parcoursLabel(bool capitalize) {
+    if (_isLyceen) return capitalize ? 'Série' : 'série';
+    if (_isEtudiant) return capitalize ? 'Filière' : 'filière';
+    return '';
+  }
+
   String get _sousTitre {
     if (_type == _ProfileType.parent) {
       final e = _parent;
@@ -111,7 +131,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (e == null) return '';
     final parts = <String>[_typeApprenantLabel(e.typeApprenant)];
     if (e.niveauEtude != null && e.niveauEtude!.isNotEmpty) parts.add(e.niveauEtude!);
-    if (e.filiere != null && e.filiere!.isNotEmpty) parts.add(e.filiere!);
+    final l = _parcoursLabel(false);
+    if (e.filiere != null && e.filiere!.isNotEmpty && l.isNotEmpty) {
+      parts.add('$l ${e.filiere}');
+    }
     return parts.join(' — ');
   }
 
@@ -151,8 +174,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (e.matieresPreferees == null || e.matieresPreferees!.isEmpty) {
       missing.add("Centres d'intérêt");
     }
-    missing.add('Notes Terminale');
-    missing.add('Série Bac');
+    if (!_isCollegien && (e.filiere == null || e.filiere!.isEmpty)) {
+      missing.add(_parcoursLabel(true));
+    }
     missing.add('Photo de profil');
     return missing;
   }
@@ -192,22 +216,138 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // ─── MODALS (Élève) ────────────────────────────────────────────────────
 
+  static const _niveauxCollegien = ['6ème', '5ème', '4ème', '3ème'];
+  static const _niveauxLyceen = ['Seconde', 'Première', 'Terminale'];
+  static const _niveauxEtudiant = ['L1', 'L2', 'L3', 'M1', 'M2', 'Doctorat'];
+  static const _series = ['A', 'C', 'D', 'E', 'F', 'G'];
+
+  List<String> get _niveauxDisponibles {
+    if (_isCollegien) return _niveauxCollegien;
+    if (_isLyceen) return _niveauxLyceen;
+    if (_isEtudiant) return _niveauxEtudiant;
+    return [];
+  }
+
   Future<void> _showEditParcours() async {
-    final niveauCtrl = TextEditingController(text: _eleve?.niveauEtude ?? '');
-    final filiereCtrl = TextEditingController(text: _eleve?.filiere ?? '');
-    final result = await _showEditBottomSheet(
-      title: 'Mon parcours',
+    final initialNiveau = _eleve?.niveauEtude ?? '';
+    final initialFiliere = _eleve?.filiere ?? '';
+    List<String> filieres = [];
+    if (_isEtudiant) {
+      try {
+        filieres = await _api.getFilieresList();
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+    String niveau = _niveauxDisponibles.contains(initialNiveau) ? initialNiveau : '';
+    String filiere = _isLyceen
+        ? (_series.contains(initialFiliere) ? initialFiliere : '')
+        : (filieres.contains(initialFiliere) ? initialFiliere : '');
+
+    final result = await showModalBottomSheet<Map<String, String>>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        bool saving = false;
+        String selectedNiveau = niveau;
+        String selectedFiliere = filiere;
+        return StatefulBuilder(builder: (ctx, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+              24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Mon parcours', style: AppTextStyles.headingMedium),
+                const SizedBox(height: 20),
+                _buildDropdown('Niveau', _niveauxDisponibles, selectedNiveau, (v) {
+                  if (v != null) setSheetState(() => selectedNiveau = v);
+                }),
+                if (!_isCollegien) ...[
+                  const SizedBox(height: 12),
+                  _buildDropdown(
+                    _parcoursLabel(true),
+                    _isLyceen ? _series : filieres,
+                    selectedFiliere,
+                    (v) { if (v != null) setSheetState(() => selectedFiliere = v); },
+                  ),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: selectedNiveau.isEmpty || (!_isCollegien && selectedFiliere.isEmpty)
+                        ? null
+                        : saving ? null : () {
+                            setSheetState(() => saving = true);
+                            Navigator.pop(ctx, {
+                              'niveau': selectedNiveau,
+                              'filiere': selectedFiliere,
+                            });
+                          },
+                    child: saving
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white,
+                            ),
+                          )
+                        : const Text('Enregistrer',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+
+    if (result != null && mounted) {
+      await _updateEleve(
+        niveau: result['niveau'] as String,
+        filiere: result['filiere'] as String,
+      );
+    }
+  }
+
+  Widget _buildDropdown(String label, List<String> items, String value, ValueChanged<String?> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSheetField('Niveau', niveauCtrl),
-        const SizedBox(height: 12),
-        _buildSheetField('Filière', filiereCtrl),
+        Text(label, style: AppTextStyles.label),
+        const SizedBox(height: 6),
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.backgroundGrey,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: DropdownButtonFormField<String>(
+            initialValue: items.contains(value) ? value : null,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            ),
+            hint: Text('Sélectionner $label',
+                style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textLight)),
+            items: items.map((item) => DropdownMenuItem(
+              value: item,
+              child: Text(item, style: AppTextStyles.bodyLarge),
+            )).toList(),
+            onChanged: onChanged,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textMedium),
+            isExpanded: true,
+          ),
+        ),
       ],
     );
-    if (result == true) {
-      await _updateEleve(niveau: niveauCtrl.text, filiere: filiereCtrl.text);
-    }
-    niveauCtrl.dispose();
-    filiereCtrl.dispose();
   }
 
   Future<void> _showEditEtablissement() async {
@@ -241,6 +381,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           .where((e) => e.isNotEmpty)
           .toList();
       await _updateEleve(matieresPreferees: matieres);
+    }
+    ctrl.dispose();
+  }
+
+  Future<void> _showEditMetierSouhaite() async {
+    final ctrl = TextEditingController(text: _eleve?.metierSouhaite ?? '');
+    final result = await _showEditBottomSheet(
+      title: 'Métier souhaité',
+      children: [
+        _buildSheetField('Quel métier voulez-vous exercer ?', ctrl),
+      ],
+    );
+    if (result == true) {
+      await _updateEleve(metierSouhaite: ctrl.text);
     }
     ctrl.dispose();
   }
@@ -362,6 +516,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? filiere,
     String? etablissement,
     List<String>? matieresPreferees,
+    String? metierSouhaite,
   }) async {
     final e = _eleve;
     if (e == null) return;
@@ -382,6 +537,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         matieresPreferees: matieresPreferees ?? e.matieresPreferees,
         styleApprentissage: e.styleApprentissage,
+        metierSouhaite: metierSouhaite ?? e.metierSouhaite,
       );
       await _api.modifierEleve(trackingId, req);
       await _refreshProfile();
@@ -392,9 +548,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (err) {
       if (mounted) {
+        final hasToken = await _api.getAccessToken();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: ${_api.handleError(err)}')),
         );
+        if (hasToken == null) {
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.login, (route) => false);
+        }
       }
     }
   }
@@ -422,9 +584,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (err) {
       if (mounted) {
+        final hasToken = await _api.getAccessToken();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: ${_api.handleError(err)}')),
         );
+        if (hasToken == null) {
+          Navigator.pushNamedAndRemoveUntil(
+              context, AppRoutes.login, (route) => false);
+        }
       }
     }
   }
@@ -760,7 +928,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _sectionItem(
         icon: Icons.school,
         title: 'Mon parcours',
-        subtitle: '${_eleve?.niveauEtude ?? ''} ${_eleve?.filiere ?? ''}'.trim(),
+        subtitle: () {
+          final niveau = _eleve?.niveauEtude ?? '';
+          final filiere = _eleve?.filiere ?? '';
+          final l = _parcoursLabel(false);
+          if (niveau.isEmpty && filiere.isEmpty) return 'Non renseigné';
+          if (_isCollegien) return niveau;
+          if (filiere.isEmpty) return niveau;
+          return '$niveau — $l $filiere';
+        }(),
         onTap: _showEditParcours,
       ),
       const Divider(height: 1, color: AppColors.cardBorder),
@@ -776,6 +952,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: "Mes centres d'intérêt",
         subtitle: _matieresLabel,
         onTap: _showEditInterets,
+      ),
+      const Divider(height: 1, color: AppColors.cardBorder),
+      _sectionItem(
+        icon: Icons.work_outline,
+        title: 'Métier souhaité',
+        subtitle: _eleve?.metierSouhaite ?? 'Non renseigné',
+        onTap: _showEditMetierSouhaite,
       ),
       const Divider(height: 1, color: AppColors.cardBorder),
       _sectionItem(
@@ -1022,7 +1205,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           )),
           GestureDetector(
-            onTap: () {},
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoriqueScreen())),
             child: const Align(
               alignment: Alignment.centerRight,
               child: Text(

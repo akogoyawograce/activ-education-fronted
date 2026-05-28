@@ -28,6 +28,10 @@ class QuestionResponse {
   final int ordre;
   final String quizTrackingId;
   final int nombreReponses;
+  final String? domaine;
+  final int? difficulte;
+  final String? tags;
+  final String? typeQuestion;
 
   QuestionResponse({
     required this.trackingId,
@@ -35,6 +39,10 @@ class QuestionResponse {
     required this.ordre,
     required this.quizTrackingId,
     required this.nombreReponses,
+    this.domaine,
+    this.difficulte,
+    this.tags,
+    this.typeQuestion,
   });
 
   factory QuestionResponse.fromJson(Map<String, dynamic> json) =>
@@ -44,6 +52,10 @@ class QuestionResponse {
         ordre: json['ordre'] ?? 0,
         quizTrackingId: json['quizTrackingId'] ?? '',
         nombreReponses: json['nombreReponses'] ?? 0,
+        domaine: json['domaine'],
+        difficulte: json['difficulte'],
+        tags: json['tags'],
+        typeQuestion: json['typeQuestion'],
       );
 }
 

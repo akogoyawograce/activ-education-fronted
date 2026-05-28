@@ -30,6 +30,7 @@ class _ExplorerScreenState extends State<ExplorerScreen>
   List<FicheFiliereResponse> _filieres = [];
   List<FicheMetierResponse> _metiers = [];
   List<FicheEtablissementResponse> _etablissements = [];
+  Set<String> _favorisSet = {};
 
   bool _isLoading = true;
   String _searchQuery = '';
@@ -77,20 +78,80 @@ class _ExplorerScreenState extends State<ExplorerScreen>
 
   Future<void> _loadAll() async {
     setState(() => _isLoading = true);
-    _api.listerSeries(size: 20).then((r) {
-      if (mounted) setState(() => _series = r.content);
-    }).catchError((_) {});
-    _api.listerFilieres(size: 20).then((r) {
-      if (mounted) setState(() => _filieres = r.content);
-    }).catchError((_) {});
-    _api.listerMetiers(size: 20).then((r) {
-      if (mounted) setState(() => _metiers = r.content);
-    }).catchError((_) {});
-    _api.listerEtablissements(size: 50).then((r) {
-      if (mounted) setState(() => _etablissements = r.content);
-    }).catchError((_) {});
-    await Future.delayed(const Duration(milliseconds: 1500));
-    if (mounted) setState(() => _isLoading = false);
+    final userId = await _api.getTrackingId();
+
+    Future<T?> _safeLoad<T>(Future<T> Function() fn, {T? fallback}) async {
+      try {
+        return await fn().timeout(const Duration(seconds: 3));
+      } catch (_) {
+        return fallback;
+      }
+    }
+
+    final results = await Future.wait([
+      _safeLoad(() => _api.listerSeries(size: 10),
+          fallback: PageResponse<FicheSerieResponse>(
+              totalElements: 0, totalPages: 0, size: 0, number: 0,
+              first: true, last: true, content: [])),
+      _safeLoad(() => _api.listerFilieres(size: 10),
+          fallback: PageResponse<FicheFiliereResponse>(
+              totalElements: 0, totalPages: 0, size: 0, number: 0,
+              first: true, last: true, content: [])),
+      _safeLoad(() => _api.listerMetiers(size: 10),
+          fallback: PageResponse<FicheMetierResponse>(
+              totalElements: 0, totalPages: 0, size: 0, number: 0,
+              first: true, last: true, content: [])),
+      _safeLoad(() => _api.listerEtablissements(size: 10),
+          fallback: PageResponse<FicheEtablissementResponse>(
+              totalElements: 0, totalPages: 0, size: 0, number: 0,
+              first: true, last: true, content: [])),
+      if (userId != null)
+        _safeLoad(() => _api.explorer.getFavorisUtilisateur(userId, page: 0, size: 100),
+            fallback: PageResponse<FavoriResponse>(
+                totalElements: 0, totalPages: 0, size: 0, number: 0,
+                first: true, last: true, content: []))
+      else
+        Future.value(PageResponse<FavoriResponse>(
+          totalElements: 0, totalPages: 0, size: 0, number: 0,
+          first: true, last: true, content: [],
+        )),
+    ]);
+    if (mounted) {
+      setState(() {
+        _series = (results[0] as PageResponse<FicheSerieResponse>?)?.content ?? [];
+        _filieres = (results[1] as PageResponse<FicheFiliereResponse>?)?.content ?? [];
+        _metiers = (results[2] as PageResponse<FicheMetierResponse>?)?.content ?? [];
+        _etablissements = (results[3] as PageResponse<FicheEtablissementResponse>?)?.content ?? [];
+        _favorisSet = (results[4] as PageResponse<FavoriResponse>?)?.content
+            .map((f) => f.ficheTrackingId).toSet() ?? {};
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _toggleFavori(FicheBase fiche) async {
+    final userId = await _api.getTrackingId();
+    if (userId == null) return;
+    try {
+      if (_favorisSet.contains(fiche.trackingId)) {
+        // Need the favoriId to delete — find it from the response
+        final page = await _api.explorer.getFavorisUtilisateur(userId, page: 0, size: 100);
+        final match = page.content.cast<FavoriResponse?>().firstWhere(
+          (f) => f!.ficheTrackingId == fiche.trackingId,
+          orElse: () => null,
+        );
+        if (match != null) {
+          await _api.supprimerFavori(match.trackingId);
+          setState(() => _favorisSet.remove(fiche.trackingId));
+        }
+      } else {
+        await _api.ajouterFavori(FavoriRequest(
+          utilisateurTrackingId: userId,
+          ficheTrackingId: fiche.trackingId,
+        ));
+        setState(() => _favorisSet.add(fiche.trackingId));
+      }
+    } catch (_) {}
   }
 
   // Filtre de recherche
@@ -358,6 +419,8 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             itemBuilder: (context, index) {
               return _FicheCard(
                 fiche: results[index],
+                isFavori: _favorisSet.contains(results[index].trackingId),
+                onToggleFavorite: () => _toggleFavori(results[index]),
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -532,8 +595,15 @@ class _AllCategoriesScreen extends StatelessWidget {
 class _FicheCard extends StatelessWidget {
   final FicheBase fiche;
   final VoidCallback onTap;
+  final bool isFavori;
+  final VoidCallback onToggleFavorite;
 
-  const _FicheCard({required this.fiche, required this.onTap});
+  const _FicheCard({
+    required this.fiche,
+    required this.onTap,
+    this.isFavori = false,
+    required this.onToggleFavorite,
+  });
 
   Color get _typeColor {
     final type = fiche.typeFiche?.toLowerCase() ?? '';
@@ -596,13 +666,13 @@ class _FicheCard extends StatelessWidget {
                   children: [
                     AuthImage(
                       imageUrl: fiche.imageUrl,
-                      height: 120,
+                      height: 72,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       loadingBuilder: (context, child, progress) {
                         if (progress == null) return child;
                         return Container(
-                          height: 120,
+                          height: 80,
                           color: _typeColor.withValues(alpha: 0.08),
                           child: Center(
                             child: SizedBox(
@@ -639,75 +709,70 @@ class _FicheCard extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Badge type
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: _typeColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       _typeLabel,
                       style: TextStyle(
                         fontFamily: 'Inter',
-                        fontSize: 10,
+                        fontSize: 9,
                         fontWeight: FontWeight.w700,
                         color: _typeColor,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
                     fiche.titre,
                     style: AppTextStyles.label.copyWith(
                       fontWeight: FontWeight.w700,
-                      fontSize: 13,
+                      fontSize: 12,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     _subtitle,
                     style: AppTextStyles.caption,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    fiche.resume,
-                    style: AppTextStyles.caption,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Favoris
                       GestureDetector(
-                        onTap: () {},
-                        child: const Icon(
-                          Icons.favorite_border_rounded,
-                          size: 18,
-                          color: AppColors.textLight,
+                        onTap: onToggleFavorite,
+                        child: Icon(
+                          isFavori
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          size: 16,
+                          color: isFavori ? AppColors.error : AppColors.textLight,
                         ),
                       ),
                       // Flèche
                       Container(
-                        width: 24,
-                        height: 24,
+                        width: 20,
+                        height: 20,
                         decoration: BoxDecoration(
                           color: _typeColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(Icons.chevron_right_rounded,
-                            size: 16, color: _typeColor),
+                            size: 14, color: _typeColor),
                       ),
                     ],
                   ),

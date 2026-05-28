@@ -1,7 +1,7 @@
-// lib/screens/home/notifications_screen.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
@@ -156,6 +156,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
         );
       }
+    }
+  }
+
+  void _navigateToRelevantScreen(String titre) {
+    final upper = titre.toUpperCase();
+    if (upper.contains('MESSAGE')) {
+      Navigator.pushNamed(context, AppRoutes.messages);
+    } else if (upper.contains('RDV') || upper.contains('RENDEZ')) {
+      Navigator.pushNamed(context, AppRoutes.rdv);
+    } else if (upper.contains('DIAGNOSTIC') || upper.contains('QUIZ')) {
+      Navigator.pushNamed(context, AppRoutes.quiz);
     }
   }
 
@@ -393,7 +404,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       onDismissed: (_) => _deleteNotification(notif),
       child: GestureDetector(
-        onTap: () => _markAsRead(notif),
+        onTap: () {
+          _markAsRead(notif);
+          _navigateToRelevantScreen(notif.titre);
+        },
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),

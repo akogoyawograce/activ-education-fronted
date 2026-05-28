@@ -55,10 +55,30 @@ export async function getReponses(questionId: string) {
   return response.data
 }
 
+export async function updateQuestion(questionId: string, data: QuestionRequest) {
+  const response = await api.put<QuestionResponse>(
+    `/questions/${questionId}`,
+    data,
+  )
+  return response.data
+}
+
 export async function addReponse(questionId: string, data: ReponseRequest) {
   const response = await api.post<ReponseResponse>(
     `/questions/${questionId}/reponses`,
     data,
   )
   return response.data
+}
+
+export async function updateReponse(reponseId: string, data: ReponseRequest) {
+  const response = await api.put<ReponseResponse>(
+    `/reponses/${reponseId}`,
+    data,
+  )
+  return response.data
+}
+
+export async function removeReponse(reponseId: string) {
+  await api.delete(`/reponses/${reponseId}`)
 }

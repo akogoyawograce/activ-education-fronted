@@ -35,6 +35,9 @@ export interface EleveResponse {
   filiere: string
   typeApprenant: string
   actif: boolean
+  matieresPreferees?: string[]
+  styleApprentissage?: string
+  metierSouhaite?: string
   createdAt: string
 }
 
@@ -138,12 +141,22 @@ export interface QuestionResponse {
   ordre: number
   quizTrackingId: string
   nombreReponses: number
+  niveauCible?: string
+  domaine?: string
+  difficulte?: number
+  tags?: string
+  typeQuestion?: string
   createdAt: string
 }
 
 export interface QuestionRequest {
   texteQuestion: string
   ordre?: number
+  niveauCible?: string
+  domaine?: string
+  difficulte?: number
+  tags?: string
+  typeQuestion?: string
 }
 
 export interface ReponseResponse {
@@ -359,5 +372,14 @@ export interface NoteResponse {
   note: number
   appreciation: string
   eleveTrackingId: string
+  createdAt: string
+}
+
+export interface NotificationResponse {
+  trackingId: string
+  titre: string
+  message: string
+  lue: boolean
+  utilisateurTrackingId: string
   createdAt: string
 }

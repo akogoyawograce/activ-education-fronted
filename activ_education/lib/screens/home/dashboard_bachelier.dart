@@ -11,7 +11,8 @@ import '../../widgets/recommendations_section.dart';
 import '../../utils/profile_completion.dart';
 
 class DashboardBachelier extends StatefulWidget {
-  const DashboardBachelier({super.key});
+  final String? typeApprenant;
+  const DashboardBachelier({super.key, this.typeApprenant});
 
   @override
   State<DashboardBachelier> createState() => _DashboardBachelierState();
@@ -52,8 +53,17 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
     super.dispose();
   }
 
+  DateTime _lastLoad = DateTime(2000);
+
   @override
   void didPopNext() {
+    if (DateTime.now().difference(_lastLoad).inSeconds > 30) {
+      _loadDashboardData();
+    }
+  }
+
+  @override
+  void didPush() {
     _loadDashboardData();
   }
 
@@ -61,71 +71,60 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
     try {
       setState(() => _isLoading = true);
       _userTrackingId = await _api.getTrackingId();
-
       if (_userTrackingId == null) {
         if (mounted) setState(() => _isLoading = false);
         return;
       }
 
-      // Charger profil utilisateur
-      try {
-        _userProfile = await _api.getEleve(_userTrackingId!);
-        _userName = _userProfile?.prenom;
-        _completionPercentage = _calculateCompletion();
-      } catch (_) {
-        _userName = 'Invité';
-      }
-
-      // Charger notes et calculer moyenne
-      try {
-        final notes = await _api.getNotesEleve(_userTrackingId!);
-        _recentNotes = notes.take(5).toList();
-        if (notes.isNotEmpty) {
-          double total = 0;
-          double totalCoefs = 0;
-          for (final note in notes) {
-            final coef = note.coefficient ?? 1;
-            total += note.note * coef;
-            totalCoefs += coef;
+      // 1. Chargement critique : profil + notes
+      await Future.wait([
+        _api.getEleve(_userTrackingId!).then((p) {
+          _userProfile = p;
+          _userName = p.prenom;
+        }).catchError((_) { _userName = 'Invité'; }),
+        _api.getNotesEleve(_userTrackingId!).then((notes) {
+          _recentNotes = notes.take(5).toList();
+          if (notes.isNotEmpty) {
+            double total = 0;
+            double totalCoefs = 0;
+            for (final note in notes) {
+              final coef = note.coefficient ?? 1;
+              total += note.note * coef;
+              totalCoefs += coef;
+            }
+            _moyenneGenerale = totalCoefs > 0 ? total / totalCoefs : null;
           }
-          _moyenneGenerale = totalCoefs > 0 ? total / totalCoefs : null;
-        }
-      } catch (_) {}
+        }).catchError((_) {}),
+      ]);
+      _lastLoad = DateTime.now();
+      if (mounted) setState(() => _isLoading = false);
 
-      // Charger RDV à venir
-      try {
-        final rdvs = await _api.getRDVEleve(_userTrackingId!);
-        _upcomingRdvs = rdvs
-            .where((r) =>
-                r.statut.toLowerCase() == 'planifie' &&
-                r.dateHeurePrevue!.isAfter(DateTime.now()))
-            .take(3)
-            .toList();
-      } catch (_) {}
-
-      // Charger compteur messages non lus
-      try {
-        _unreadMessagesCount = await _api.getMessagesNonLus(_userTrackingId!);
-      } catch (_) {}
-
-      // Charger dernier résultat diagnostic
-      try {
-        final resultatsPage = await _api.getResultatsEleve(_userTrackingId!, page: 0, size: 1);
-        if (resultatsPage.content.isNotEmpty) {
-          _dernierResultat = resultatsPage.content.first;
-          _completionPercentage = _calculateCompletion();
-        }
-      } catch (_) {}
-
-      // Générer recommandations Quiz × Notes
+      // 2. Chargement non-critique en arrière-plan
+      await Future.wait([
+        _api.getRDVEleve(_userTrackingId!).then((rdvs) {
+          _upcomingRdvs = rdvs
+              .where((r) =>
+                  r.statut.toLowerCase() == 'planifie' &&
+                  r.dateHeurePrevue!.isAfter(DateTime.now()))
+              .take(3)
+              .toList();
+        }).catchError((_) {}),
+        _api.getMessagesNonLus(_userTrackingId!).then((c) {
+          _unreadMessagesCount = c;
+        }).catchError((_) {}),
+        _api.getResultatsEleve(_userTrackingId!, page: 0, size: 1).then((page) {
+          if (page.content.isNotEmpty) {
+            _dernierResultat = page.content.first;
+          }
+        }).catchError((_) {}),
+      ]);
       _recommendations = _recommendationService.generate(
         profilDecouvert: _dernierResultat?.profilDecouvert,
         recommandation: _dernierResultat?.recommandation,
         notes: _recentNotes,
       );
-
       _completionPercentage = _calculateCompletion();
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() {});
     } catch (e) {
       debugPrint('Erreur chargement dashboard: $e');
       if (mounted) setState(() => _isLoading = false);
@@ -250,7 +249,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
               ),
               const SizedBox(height: 4),
               Text(
-                '${_userProfile?.typeApprenant ?? "Nouveau Bachelier"} — ${_userProfile?.filiere ?? "Série ?"}',
+                _buildHeaderSubtitle(),
                 style: const TextStyle(
                   fontSize: 14,
                   color: AppColors.textMedium,
@@ -330,6 +329,30 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
         ),
       ],
     );
+  }
+
+  String _buildHeaderSubtitle() {
+    final p = _userProfile;
+    if (p == null) return 'Nouveau Bachelier';
+    final type = p.typeApprenant;
+    final niveau = p.niveauEtude ?? '';
+    final filiere = p.filiere ?? '';
+    if (type == 'COLLEGIEN') {
+      return niveau.isNotEmpty ? '$type — $niveau' : type;
+    }
+    if (type == 'LYCEEN') {
+      final parts = [type];
+      if (niveau.isNotEmpty) parts.add(niveau);
+      if (filiere.isNotEmpty) parts.add('série $filiere');
+      return parts.join(' — ');
+    }
+    if (type == 'ETUDIANT') {
+      final parts = [type];
+      if (niveau.isNotEmpty) parts.add(niveau);
+      if (filiere.isNotEmpty) parts.add(filiere);
+      return parts.join(' — ');
+    }
+    return type;
   }
 
   Widget _buildMoyenneCard() {

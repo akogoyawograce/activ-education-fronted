@@ -184,18 +184,21 @@ class _NotesScreenState extends State<NotesScreen>
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (e is DioException && e.response?.statusCode == 401) {
-        _eleveId = null;
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Session expirée. Veuillez vous reconnecter.'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-          Navigator.pushNamedAndRemoveUntil(
-              context, AppRoutes.login, (route) => false);
+        final token = await _api.getAccessToken();
+        if (token == null) {
+          _eleveId = null;
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Session expirée. Veuillez vous reconnecter.'),
+                backgroundColor: AppColors.error,
+              ),
+            );
+            Navigator.pushNamedAndRemoveUntil(
+                context, AppRoutes.login, (route) => false);
+          }
+          return;
         }
-        return;
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

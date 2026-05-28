@@ -7,17 +7,17 @@ class DiagnosticService extends BaseService {
   DiagnosticService._internal();
 
   Future<PageResponse<QuizResponse>> listerQuizzes({int page = 0, int size = 10}) async {
-    final res = await dio.get('/api/v1/quiz', queryParameters: {'page': page, 'size': size});
+    final res = await dioGet('/api/v1/quiz', queryParameters: {'page': page, 'size': size});
     return PageResponse.fromJson(res.data, (json) => QuizResponse.fromJson(json));
   }
 
   Future<List<QuestionResponse>> getQuestionsQuiz(String quizId) async {
-    final res = await dio.get('/api/v1/quiz/$quizId/questions');
+    final res = await dioGet('/api/v1/quiz/$quizId/questions');
     return (res.data as List).map((e) => QuestionResponse.fromJson(e)).toList();
   }
 
   Future<List<ReponseResponse>> getReponsesQuestion(String questionId) async {
-    final res = await dio.get('/api/v1/questions/$questionId/reponses');
+    final res = await dioGet('/api/v1/questions/$questionId/reponses');
     return (res.data as List).map((e) => ReponseResponse.fromJson(e)).toList();
   }
 
@@ -27,13 +27,13 @@ class DiagnosticService extends BaseService {
   }
 
   Future<List<ResultatDiagnosticResponse>> getHistoriqueResultats(String eleveId) async {
-    final res = await dio.get('/api/v1/eleves/$eleveId/resultats-diagnostic');
-    return (res.data as List).map((e) => ResultatDiagnosticResponse.fromJson(e)).toList();
+    final page = await getResultatsEleve(eleveId, size: 100);
+    return page.content;
   }
 
   Future<ResultatDiagnosticResponse?> getDernierResultat(String eleveId, String quizId) async {
     try {
-      final res = await dio.get('/api/v1/eleves/$eleveId/resultats-diagnostic/dernier', queryParameters: {'quizTrackingId': quizId});
+      final res = await dioGet('/api/v1/eleves/$eleveId/resultats-diagnostic/dernier', queryParameters: {'quizTrackingId': quizId});
       if (res.statusCode == 204) return null;
       return ResultatDiagnosticResponse.fromJson(res.data);
     } catch (_) {
@@ -42,8 +42,12 @@ class DiagnosticService extends BaseService {
   }
 
   Future<PageResponse<ResultatDiagnosticResponse>> getResultatsEleve(String eleveId, {int page = 0, int size = 10}) async {
-    final res = await dio.get('/api/v1/eleves/$eleveId/resultats-diagnostic', queryParameters: {'page': page, 'size': size});
+    final res = await dioGet('/api/v1/eleves/$eleveId/resultats-diagnostic', queryParameters: {'page': page, 'size': size});
     return PageResponse.fromJson(res.data, (json) => ResultatDiagnosticResponse.fromJson(json));
   }
 
+  Future<List<QuestionResponse>> recommanderQuestions(String eleveId, String quizId, {int nombre = 20}) async {
+    final res = await dioGet('/api/v1/quiz/recommandations/$eleveId/$quizId', queryParameters: {'nombre': nombre});
+    return (res.data as List).map((e) => QuestionResponse.fromJson(e)).toList();
+  }
 }

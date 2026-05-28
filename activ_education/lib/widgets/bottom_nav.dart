@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
+class NavTab {
+  final IconData icon;
+  final IconData iconOutlined;
+  final String label;
+
+  const NavTab({
+    required this.icon,
+    required this.iconOutlined,
+    required this.label,
+  });
+}
+
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
+  final List<NavTab> tabs;
 
   const AppBottomNav({
     super.key,
     required this.currentIndex,
     required this.onTap,
+    required this.tabs,
   });
 
   @override
@@ -29,43 +43,16 @@ class AppBottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _NavItem(
-                icon: Icons.home_rounded,
-                iconOutlined: Icons.home_outlined,
-                label: 'Accueil',
-                isActive: currentIndex == 0,
-                onTap: () => onTap(0),
-              ),
-              _NavItem(
-                icon: Icons.explore_rounded,
-                iconOutlined: Icons.explore_outlined,
-                label: 'Explorer',
-                isActive: currentIndex == 1,
-                onTap: () => onTap(1),
-              ),
-              _NavItem(
-                icon: Icons.quiz_rounded,
-                iconOutlined: Icons.quiz_outlined,
-                label: 'Diagnostic',
-                isActive: currentIndex == 2,
-                onTap: () => onTap(2),
-              ),
-              _NavItem(
-                icon: Icons.chat_bubble_rounded,
-                iconOutlined: Icons.chat_bubble_outline_rounded,
-                label: 'Messages',
-                isActive: currentIndex == 3,
-                onTap: () => onTap(3),
-              ),
-              _NavItem(
-                icon: Icons.person_rounded,
-                iconOutlined: Icons.person_outline_rounded,
-                label: 'Profil',
-                isActive: currentIndex == 4,
-                onTap: () => onTap(4),
-              ),
-            ],
+            children: List.generate(tabs.length, (i) {
+              final tab = tabs[i];
+              return _NavItem(
+                icon: tab.icon,
+                iconOutlined: tab.iconOutlined,
+                label: tab.label,
+                isActive: currentIndex == i,
+                onTap: () => onTap(i),
+              );
+            }),
           ),
         ),
       ),

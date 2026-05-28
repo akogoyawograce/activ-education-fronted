@@ -58,22 +58,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem('user_type', userType)
 
     let userName = userType || ''
-    try {
-      const me = await getMe()
-      const fullName = `${me.prenom || ''} ${me.nom || ''}`.trim()
+    const [meResult, adminResult] = await Promise.allSettled([
+      getMe(),
+      !niveauAcces && userType === 'administrateurs' && tokenRes.trackingId
+        ? getAdmin(tokenRes.trackingId)
+        : Promise.resolve(null),
+    ])
+    if (meResult.status === 'fulfilled') {
+      const fullName = `${meResult.value.prenom || ''} ${meResult.value.nom || ''}`.trim()
       if (fullName) userName = fullName
-    } catch {
-      // keep fallback userName = userType
     }
-
-    // niveauAcces is in /administrateurs/{id}, not in /auth/me
-    if (!niveauAcces && userType === 'administrateurs' && tokenRes.trackingId) {
-      try {
-        const admin = await getAdmin(tokenRes.trackingId)
-        if (admin.niveauAcces) niveauAcces = admin.niveauAcces
-      } catch {
-        // keep fallback
-      }
+    if (adminResult.status === 'fulfilled' && adminResult.value?.niveauAcces) {
+      niveauAcces = adminResult.value.niveauAcces
     }
 
     if (niveauAcces) localStorage.setItem('user_niveau_acces', niveauAcces)

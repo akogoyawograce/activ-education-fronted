@@ -55,47 +55,75 @@ class _QuizScreenState extends State<QuizScreen>
     super.dispose();
   }
 
+  Future<T?> _safeLoad<T>(Future<T> Function() fn, {T? fallback}) async {
+    try {
+      return await fn().timeout(const Duration(seconds: 3));
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   Future<void> _loadQuiz() async {
     try {
       setState(() => _isLoading = true);
-      QuizResponse quiz;
-      if (widget.quizTrackingId != null) {
-        quiz = await _api.getQuiz(widget.quizTrackingId!);
-      } else {
-        final page = await _api.listerQuiz(size: 1);
-        if (page.content.isEmpty) {
-          setState(() {
-            _error = 'Aucun quiz disponible';
-            _isLoading = false;
-          });
-          return;
+      final quizResult = await _safeLoad(() async {
+        if (widget.quizTrackingId != null) {
+          return await _api.getQuiz(widget.quizTrackingId!);
         }
-        quiz = page.content.first;
+        final page = await _api.listerQuiz(size: 1);
+        return page.content.isNotEmpty ? page.content.first : null;
+      });
+      if (!mounted) return;
+      if (quizResult == null) {
+        setState(() { _error = 'Aucun quiz disponible'; _isLoading = false; });
+        return;
       }
-      final questions = await _api.getQuestionsQuiz(quiz.trackingId);
+      _quiz = quizResult;
+
+      final trackingId = await _api.getTrackingId();
+      final questions = await (trackingId != null
+          ? _safeLoad(
+              () => _api.recommanderQuestions(trackingId, _quiz!.trackingId),
+              fallback: <QuestionResponse>[],
+            )
+          : _safeLoad(
+              () => _api.getQuestionsQuiz(_quiz!.trackingId),
+              fallback: <QuestionResponse>[],
+            ));
+      final questionsSafe = questions ?? [];
+      if (!mounted) return;
+      if (questionsSafe.isEmpty) {
+        setState(() { _error = 'Quiz vide'; _isLoading = false; });
+        return;
+      }
+      _questions = questionsSafe;
       final reponsesResults = await Future.wait(
-        questions.map((q) => _api.getReponsesQuestion(q.trackingId)),
+        questionsSafe.map((q) => _safeLoad(
+          () => _api.getReponsesQuestion(q.trackingId),
+          fallback: <ReponseResponse>[],
+        )),
       );
+      if (!mounted) return;
       final Map<String, List<ReponseResponse>> repMap = {};
-      for (int i = 0; i < questions.length; i++) {
-        repMap[questions[i].trackingId] = reponsesResults[i];
+      for (int i = 0; i < questionsSafe.length; i++) {
+        repMap[questionsSafe[i].trackingId] = reponsesResults[i] ?? [];
       }
       setState(() {
-        _quiz = quiz;
-        _questions = questions;
         _reponsesParQuestion = repMap;
         _isLoading = false;
       });
       _animController.forward();
     } catch (e) {
-      setState(() {
-        if (e is DioException && e.response?.statusCode == 401) {
-          _error = 'Connectez-vous pour accéder aux quiz';
-        } else {
-          _error = 'Erreur de chargement du quiz';
-        }
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          if (e is DioException && e.response?.statusCode == 401) {
+            _error = 'Connectez-vous pour accéder aux quiz';
+          } else {
+            _error = 'Erreur de chargement du quiz';
+          }
+          _isLoading = false;
+        });
+      }
     }
   }
 

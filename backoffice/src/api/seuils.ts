@@ -9,7 +9,8 @@ export async function getByFiliere(filiereId: string) {
 }
 
 export async function getAll() {
-  return [] as SeuilAdmissionResponse[]
+  const response = await api.get<SeuilAdmissionResponse[]>('/seuils-admission')
+  return response.data
 }
 
 export async function create(data: SeuilAdmissionRequest) {

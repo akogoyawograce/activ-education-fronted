@@ -10,13 +10,17 @@ export default function Header() {
     : niveauAcces === 'SUPER_ADMIN' ? '/superadmin/profil'
     : '/admin/profil'
 
+  const notifPath = userType === 'conseillers' ? '/conseiller/notifications'
+    : niveauAcces === 'SUPER_ADMIN' ? '/superadmin/notifications'
+    : '/admin/notifications'
+
   return (
     <header className="fixed top-0 left-[240px] right-0 h-[60px] bg-card border-b border-border flex items-center justify-between px-6 z-20">
       <div />
 
       <div className="flex items-center gap-4">
         <button
-          onClick={() => navigate(profilPath)}
+          onClick={() => navigate(notifPath)}
           className="relative p-2 rounded-lg text-text-secondary hover:text-text-main hover:bg-gray-100 transition-colors"
           title="Notifications"
         >

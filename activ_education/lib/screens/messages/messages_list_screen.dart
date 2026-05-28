@@ -41,43 +41,70 @@ class _MessagesListScreenState extends State<MessagesListScreen> with RouteAware
     super.dispose();
   }
 
+  DateTime _lastLoad = DateTime(2000);
+
   @override
   void didPopNext() {
-    _loadMessages();
+    if (DateTime.now().difference(_lastLoad).inSeconds > 15) {
+      _loadMessages();
+    }
   }
 
   Future<void> _loadMessages() async {
     try {
       setState(() => _isLoading = true);
       _userTrackingId = await _api.getTrackingId();
+      if (!mounted) return;
       _userRole = await _api.getUserRole();
+      if (!mounted) return;
       if (_userTrackingId == null) return;
 
-      final result = await _api.getMessagesRecus(_userTrackingId!, size: 50);
-      final messages = result.content;
+      final recus = _api.getMessagesRecus(_userTrackingId!, size: 50);
+      final envoyes = _api.getMessagesEnvoyes(_userTrackingId!, size: 50);
+      final results = await Future.wait([recus, envoyes]);
+      if (!mounted) return;
 
-      // Charger les noms des expéditeurs
+      final recusContent = results[0].content;
+      final envoyesContent = results[1].content;
+
+      // Fusionner et dédupliquer (même trackingId)
+      final seen = <String>{};
+      final messages = <MessageResponse>[];
+      for (final msg in [...recusContent, ...envoyesContent]) {
+        if (seen.add(msg.trackingId)) messages.add(msg);
+      }
+      messages.sort((a, b) => (b.dateEnvoi ?? DateTime(1970)).compareTo(a.dateEnvoi ?? DateTime(1970)));
+
+      // Charger les noms des autres participants (expéditeur si recu, destinataire si envoyé)
       final noms = <String, String>{};
-      final uniqueExpediteurs = messages.map((m) => m.expediteurTrackingId).toSet();
+      final uniqueIds = messages.map((m) =>
+        m.expediteurTrackingId == _userTrackingId! ? m.destinataireTrackingId : m.expediteurTrackingId
+      ).toSet();
 
-      for (final expediteurId in uniqueExpediteurs) {
-        final info = await _api.getUtilisateurNom(expediteurId);
-        noms[expediteurId] = '${info['prenom']} ${info['nom']}';
+      final nomResults = await Future.wait(
+        uniqueIds.map((id) => _api.getUtilisateurNom(id)),
+      );
+      if (!mounted) return;
+      for (int i = 0; i < uniqueIds.length; i++) {
+        final id = uniqueIds.elementAt(i);
+        noms[id] = '${nomResults[i]['prenom']} ${nomResults[i]['nom']}';
       }
 
       // Compter les non-lus
       final nonLus = await _api.getMessagesNonLus(_userTrackingId!);
+      if (!mounted) return;
 
       setState(() {
+        _lastLoad = DateTime.now();
         _messages = messages;
-        _groupedMessages = _groupByExpediteur();
+        _groupedMessages = _groupByOtherParticipant();
         _expediteursNoms = noms;
         _unreadCount = nonLus;
         _isLoading = false;
       });
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erreur: ${_api.handleError(e as dynamic)}')),
         );
@@ -94,11 +121,17 @@ class _MessagesListScreenState extends State<MessagesListScreen> with RouteAware
     }
   }
 
-  List<MapEntry<String, List<MessageResponse>>> _groupByExpediteur() {
+  String _otherParticipantId(MessageResponse msg) =>
+    msg.expediteurTrackingId == _userTrackingId!
+      ? msg.destinataireTrackingId
+      : msg.expediteurTrackingId;
+
+  List<MapEntry<String, List<MessageResponse>>> _groupByOtherParticipant() {
     final Map<String, List<MessageResponse>> grouped = {};
     for (final msg in _messages) {
-      grouped.putIfAbsent(msg.expediteurTrackingId, () => []);
-      grouped[msg.expediteurTrackingId]!.add(msg);
+      final otherId = _otherParticipantId(msg);
+      grouped.putIfAbsent(otherId, () => []);
+      grouped[otherId]!.add(msg);
     }
     // Trier par date décroissante
     for (final key in grouped.keys) {
@@ -108,9 +141,14 @@ class _MessagesListScreenState extends State<MessagesListScreen> with RouteAware
         return dateB.compareTo(dateA);
       });
     }
-    return grouped.entries.toList();
+    // Trier les clés par la date du message le plus récent
+    final sortedEntries = grouped.entries.toList()..sort((a, b) {
+      final dateA = a.value.first.dateEnvoi ?? DateTime(1970);
+      final dateB = b.value.first.dateEnvoi ?? DateTime(1970);
+      return dateB.compareTo(dateA);
+    });
+    return sortedEntries;
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

@@ -3,7 +3,6 @@ import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../widgets/common_widgets.dart';
 import '../../services/api_service.dart';
-import '../../services/google_sign_in_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,66 +23,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  Future<void> _googleSignIn() async {
-    try {
-      setState(() => _isLoading = true);
-      final api = ApiService();
-      final google = GoogleSignInService();
-      final profile = await google.signInAndGetProfile();
-      if (profile == null) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Connexion Google indisponible. Configuration requise (SHA-1, OAuth).'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
-        return;
-      }
-
-      final email = profile['email'] ?? '';
-      final linkedId = await google.getLinkedTrackingId(email);
-
-      if (linkedId != null) {
-        final role = await api.getUserRole();
-        await api.auth.saveUserData(trackingId: linkedId, role: role ?? 'ELEVE');
-        if (mounted) {
-          setState(() => _isLoading = false);
-          Navigator.pushNamedAndRemoveUntil(context, AppRoutes.home, (route) => false);
-        }
-      } else {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Compte non lié'),
-              content: Text('Aucun compte lié à $email.\nConnectez-vous avec email/mot de passe pour lier votre compte Google.'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('OK'),
-                ),
-              ],
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erreur de connexion Google. Réessayez plus tard.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _login() async {
@@ -220,26 +159,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
 
                   const SizedBox(height: 24),
-                  const Divider(color: AppColors.cardBorder),
-                  const SizedBox(height: 20),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 54,
-                    child: OutlinedButton.icon(
-                      onPressed: _isLoading ? null : _googleSignIn,
-                      icon: const Icon(Icons.g_mobiledata_rounded, size: 28),
-                      label: const Text('Continuer avec Google'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textDark,
-                        side: const BorderSide(color: AppColors.cardBorder),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
 
                   const Text(
                     'Pas encore de compte ?',
