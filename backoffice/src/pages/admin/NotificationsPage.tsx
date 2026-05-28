@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, CheckCheck, Trash2, Clock, MessageSquare, Calendar, Star, Target } from 'lucide-react'
+import { Bell, CheckCheck, Trash2, Clock, MessageSquare, Calendar, Star, Target, Send } from 'lucide-react'
 import * as notificationsService from '@/api/notifications'
 import { useAuthStore } from '@/stores/authStore'
 import PageHeader from '@/components/shared/PageHeader'
+import Modal from '@/components/ui/Modal'
 
 const STYLES: Record<string, { icon: typeof Bell; color: string; bg: string }> = {
   MESSAGE: { icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -39,6 +40,10 @@ export default function NotificationsPage() {
   const { trackingId } = useAuthStore()
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const [showSend, setShowSend] = useState(false)
+  const [sendTitre, setSendTitre] = useState('')
+  const [sendMessage, setSendMessage] = useState('')
+  const [sendUserId, setSendUserId] = useState('')
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications', trackingId],
@@ -67,6 +72,18 @@ export default function NotificationsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   })
 
+  const sendMutation = useMutation({
+    mutationFn: ({ userId, titre, message }: { userId: string; titre: string; message: string }) =>
+      notificationsService.sendNotification(userId, titre, message),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+      setShowSend(false)
+      setSendTitre('')
+      setSendMessage('')
+      setSendUserId('')
+    },
+  })
+
   const filtered = filter === 'unread'
     ? notifications.filter((n) => !n.lue)
     : notifications
@@ -93,6 +110,13 @@ export default function NotificationsPage() {
               Non lues
             </button>
           </div>
+          <button
+            onClick={() => setShowSend(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-primary hover:bg-primary-light rounded-lg transition-colors"
+          >
+            <Send className="w-4 h-4" />
+            Envoyer
+          </button>
           {notifications.some((n) => !n.lue) && (
             <button
               onClick={() => markAllReadMutation.mutate()}
@@ -176,6 +200,64 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+
+      <Modal
+        open={showSend}
+        onClose={() => { setShowSend(false); setSendTitre(''); setSendMessage(''); setSendUserId('') }}
+        title="Envoyer une notification"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">ID Utilisateur</label>
+            <input
+              value={sendUserId}
+              onChange={(e) => setSendUserId(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              placeholder="Tracking ID du destinataire"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Titre</label>
+            <input
+              value={sendTitre}
+              onChange={(e) => setSendTitre(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+              placeholder="Titre de la notification"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-main mb-1">Message</label>
+            <textarea
+              rows={4}
+              value={sendMessage}
+              onChange={(e) => setSendMessage(e.target.value)}
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+              placeholder="Contenu du message"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              onClick={() => { setShowSend(false); setSendTitre(''); setSendMessage(''); setSendUserId('') }}
+              className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-main border border-border rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={() => sendMutation.mutate({ userId: sendUserId, titre: sendTitre, message: sendMessage })}
+              disabled={sendMutation.isPending || !sendUserId || !sendTitre}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-dark rounded-lg transition-colors disabled:opacity-50"
+            >
+              {sendMutation.isPending ? (
+                <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Send className="size-4" />
+              )}
+              Envoyer
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

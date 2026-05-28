@@ -29,4 +29,9 @@ class AcademicService extends BaseService {
     final res = await dio.get('/api/v1/notes/$trackingId');
     return NoteResponse.fromJson(res.data);
   }
+
+  Future<PageResponse<NoteResponse>> getNotesElevePagine(String eleveId, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/eleves/$eleveId/notes/pagine', queryParameters: {'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => NoteResponse.fromJson(json));
+  }
 }

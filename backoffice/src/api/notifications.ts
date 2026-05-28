@@ -1,5 +1,5 @@
 import api from './client'
-import type { NotificationResponse } from '../types'
+import type { NotificationResponse, PageResponse } from '../types'
 
 export async function getAll(utilisateurId: string) {
   const response = await api.get<NotificationResponse[]>(
@@ -8,9 +8,32 @@ export async function getAll(utilisateurId: string) {
   return response.data
 }
 
+export async function getAllPagine(utilisateurId: string, page = 0, size = 10) {
+  const response = await api.get<PageResponse<NotificationResponse>>(
+    `/utilisateurs/${utilisateurId}/notifications/pagine`,
+    { params: { page, size } },
+  )
+  return response.data
+}
+
+export async function getById(notificationId: string) {
+  const response = await api.get<NotificationResponse>(
+    `/notifications/${notificationId}`,
+  )
+  return response.data
+}
+
 export async function getNonLues(utilisateurId: string) {
   const response = await api.get<NotificationResponse[]>(
     `/utilisateurs/${utilisateurId}/notifications/non-lues`,
+  )
+  return response.data
+}
+
+export async function sendNotification(utilisateurId: string, titre: string, message: string) {
+  const response = await api.post<NotificationResponse>(
+    `/utilisateurs/${utilisateurId}/notifications`,
+    { titre, message },
   )
   return response.data
 }

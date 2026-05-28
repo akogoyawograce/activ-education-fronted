@@ -72,10 +72,44 @@ class InteractionService extends BaseService {
     return RendezVousResponse.fromJson(res.data);
   }
 
+  Future<PageResponse<RendezVousResponse>> getRDVElevePagine(String eleveId, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/rendez-vous/eleve/$eleveId/pagine', queryParameters: {'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => RendezVousResponse.fromJson(json));
+  }
+
+  Future<PageResponse<RendezVousResponse>> getRDVConseillerPagine(String conseillerId, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/rendez-vous/conseiller/$conseillerId/pagine', queryParameters: {'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => RendezVousResponse.fromJson(json));
+  }
+
+  Future<List<RendezVousResponse>> getRDVEleveParStatut(String eleveId, String statut) async {
+    final res = await dio.get('/api/v1/rendez-vous/eleve/$eleveId/statut/$statut');
+    return (res.data as List).map((e) => RendezVousResponse.fromJson(e)).toList();
+  }
+
+  Future<List<RendezVousResponse>> getRDVConseillerParStatut(String conseillerId, String statut) async {
+    final res = await dio.get('/api/v1/rendez-vous/conseiller/$conseillerId/statut/$statut');
+    return (res.data as List).map((e) => RendezVousResponse.fromJson(e)).toList();
+  }
+
   // Notifications
   Future<List<NotificationResponse>> getNotificationsUtilisateur(String utilisateurId) async {
     final res = await dio.get('/api/v1/utilisateurs/$utilisateurId/notifications');
     return (res.data as List).map((e) => NotificationResponse.fromJson(e)).toList();
+  }
+
+  Future<NotificationResponse> getNotification(String trackingId) async {
+    final res = await dio.get('/api/v1/notifications/$trackingId');
+    return NotificationResponse.fromJson(res.data);
+  }
+
+  Future<PageResponse<NotificationResponse>> getNotificationsPagine(String utilisateurId, {int page = 0, int size = 10}) async {
+    final res = await dio.get('/api/v1/utilisateurs/$utilisateurId/notifications/pagine', queryParameters: {'page': page, 'size': size});
+    return PageResponse.fromJson(res.data, (json) => NotificationResponse.fromJson(json));
+  }
+
+  Future<void> envoyerNotification(String utilisateurId, {required String titre, required String message}) async {
+    await dio.post('/api/v1/utilisateurs/$utilisateurId/notifications', data: {'titre': titre, 'message': message});
   }
 
   Future<void> marquerLue(String notificationId) async {

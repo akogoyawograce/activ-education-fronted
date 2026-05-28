@@ -59,4 +59,14 @@ class DiagnosticService extends BaseService {
     final res = await dio.get('/api/v1/resultats-diagnostic/$trackingId');
     return ResultatDiagnosticResponse.fromJson(res.data);
   }
+
+  Future<QuestionResponse> getQuestion(String trackingId) async {
+    final res = await dio.get('/api/v1/questions/$trackingId');
+    return QuestionResponse.fromJson(res.data);
+  }
+
+  Future<ReponseResponse> getReponse(String trackingId) async {
+    final res = await dio.get('/api/v1/reponses/$trackingId');
+    return ReponseResponse.fromJson(res.data);
+  }
 }
