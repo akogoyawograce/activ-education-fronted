@@ -79,12 +79,7 @@ class _RdvScreenState extends State<RdvScreen>
         return;
       }
 
-      List<RendezVousResponse> rdvs;
-      if (widget.conseillerId != null) {
-        rdvs = await _api.getRDVConseiller(widget.conseillerId!);
-      } else {
-        rdvs = await _api.getRDVEleve(_userTrackingId!);
-      }
+      final rdvs = await _api.getRDVEleve(_userTrackingId!);
 
       setState(() {
         _rdvs = rdvs;
@@ -316,16 +311,19 @@ class _RdvScreenState extends State<RdvScreen>
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    widget.conseillerNom != null
-                        ? 'RDV avec ${widget.conseillerNom}'
-                        : 'Mes rendez-vous',
-                    style: AppTextStyles.headingMedium.copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Text(
+                      widget.conseillerNom != null
+                          ? 'RDV avec ${widget.conseillerNom}'
+                          : 'Mes rendez-vous',
+                      style: AppTextStyles.headingMedium.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   if (!_isCreatingMode)
                     GestureDetector(
                       onTap: () {

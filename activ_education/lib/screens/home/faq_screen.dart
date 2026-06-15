@@ -202,20 +202,13 @@ class _FaqScreenState extends State<FaqScreen> {
         final faq = _filteredFaqs[index];
         final isOpen = _openQuestions.contains(faq.question);
         
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+        return Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          elevation: 0,
+          shadowColor: Colors.black.withValues(alpha: 0.03),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 onTap: () {

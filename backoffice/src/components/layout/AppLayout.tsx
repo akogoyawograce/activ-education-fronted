@@ -6,19 +6,15 @@ import { useAuthStore } from '@/stores/authStore'
 
 export default function AppLayout() {
   const navigate = useNavigate()
-  const { isAuthenticated, loadFromStorage } = useAuthStore()
+  const { isAuthenticated } = useAuthStore()
 
   useEffect(() => {
-    loadFromStorage()
-  }, [loadFromStorage])
-
-  useEffect(() => {
-    if (!useAuthStore.getState().isAuthenticated) {
+    if (!isAuthenticated) {
       navigate('/login', { replace: true })
     }
   }, [navigate, isAuthenticated])
 
-  if (!useAuthStore.getState().isAuthenticated) {
+  if (!isAuthenticated) {
     return null
   }
 

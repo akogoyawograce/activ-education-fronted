@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { ShieldAlert } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
@@ -34,14 +34,10 @@ function getUserRoleLabel(userType: string | null, niveauAcces: string | null): 
 export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const location = useLocation()
   const { isAuthenticated, userType, niveauAcces, loadFromStorage } = useAuthStore()
-  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     loadFromStorage()
-    setReady(true)
   }, [loadFromStorage])
-
-  if (!ready) return null
 
   const storedToken = localStorage.getItem('access_token')
   const effectiveAuth = isAuthenticated || !!storedToken

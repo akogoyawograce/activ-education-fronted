@@ -1,3 +1,4 @@
+import { Fragment } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import logoSrc from '@/assets/logo.jpeg'
 import {
@@ -23,60 +24,111 @@ import {
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 
-interface NavItem {
-  label: string
-  path: string
-  icon: typeof LayoutDashboard
+interface NavGroup {
+  label?: string
+  items: { label: string; path: string; icon: typeof LayoutDashboard }[]
 }
 
-const CONSEILLER_NAV: NavItem[] = [
-  { label: 'Tableau de bord', path: '/conseiller/dashboard', icon: LayoutDashboard },
-  { label: 'Messages', path: '/conseiller/messages', icon: MessageSquare },
-  { label: 'Rendez-vous', path: '/conseiller/rendez-vous', icon: CalendarCheck },
-  { label: 'FAQ', path: '/conseiller/faq', icon: HelpCircle },
-  { label: 'Utilisateurs', path: '/conseiller/utilisateurs', icon: Users },
-  { label: 'Mon Profil', path: '/conseiller/profil', icon: UserCircle },
-  { label: 'Statistiques', path: '/conseiller/statistiques', icon: BarChart3 },
+const CONSEILLER_GROUPS: NavGroup[] = [
+  {
+    items: [
+      { label: 'Tableau de bord', path: '/conseiller/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Gestion',
+    items: [
+      { label: 'Messages', path: '/conseiller/messages', icon: MessageSquare },
+      { label: 'Rendez-vous', path: '/conseiller/rendez-vous', icon: CalendarCheck },
+      { label: 'Utilisateurs', path: '/conseiller/utilisateurs', icon: Users },
+    ],
+  },
+  {
+    label: 'Ressources',
+    items: [
+      { label: 'FAQ', path: '/conseiller/faq', icon: HelpCircle },
+      { label: 'Statistiques', path: '/conseiller/statistiques', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Compte',
+    items: [
+      { label: 'Mon Profil', path: '/conseiller/profil', icon: UserCircle },
+    ],
+  },
 ]
 
-const ADMIN_NAV: NavItem[] = [
-  { label: 'Tableau de bord', path: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Étudiants', path: '/admin/eleves', icon: GraduationCap },
-  { label: 'Parents', path: '/admin/parents', icon: Users },
-  { label: 'Filières', path: '/admin/filieres', icon: BookOpen },
-  { label: 'Métiers', path: '/admin/metiers', icon: Briefcase },
-  { label: 'Séries', path: '/admin/series', icon: Book },
-  { label: 'Établissements', path: '/admin/etablissements', icon: Building2 },
-  { label: 'Quiz', path: '/admin/quiz', icon: FileQuestion },
-  { label: 'Conseillers', path: '/admin/conseillers', icon: Briefcase },
-  { label: 'FAQ', path: '/admin/faq', icon: HelpCircle },
-  { label: 'Seuils', path: '/admin/seuils', icon: ClipboardList },
-  { label: 'Matrices', path: '/admin/matrices', icon: Table },
-  { label: 'Statistiques', path: '/admin/statistiques', icon: BarChart3 },
-  { label: 'Mon Profil', path: '/admin/profil', icon: UserCircle },
+const ADMIN_GROUPS: NavGroup[] = [
+  {
+    items: [
+      { label: 'Tableau de bord', path: '/admin/dashboard', icon: LayoutDashboard },
+    ],
+  },
+  {
+    label: 'Utilisateurs',
+    items: [
+      { label: 'Étudiants', path: '/admin/eleves', icon: GraduationCap },
+      { label: 'Parents', path: '/admin/parents', icon: Users },
+      { label: 'Conseillers', path: '/admin/conseillers', icon: Briefcase },
+    ],
+  },
+  {
+    label: 'Bibliothèque',
+    items: [
+      { label: 'Séries', path: '/admin/series', icon: Book },
+      { label: 'Filières', path: '/admin/filieres', icon: BookOpen },
+      { label: 'Métiers', path: '/admin/metiers', icon: Briefcase },
+      { label: 'Établissements', path: '/admin/etablissements', icon: Building2 },
+    ],
+  },
+  {
+    label: 'Diagnostic',
+    items: [
+      { label: 'Quiz', path: '/admin/quiz', icon: FileQuestion },
+      { label: 'Seuils', path: '/admin/seuils', icon: ClipboardList },
+      { label: 'Matrices', path: '/admin/matrices', icon: Table },
+    ],
+  },
+  {
+    label: 'Support',
+    items: [
+      { label: 'FAQ', path: '/admin/faq', icon: HelpCircle },
+      { label: 'Statistiques', path: '/admin/statistiques', icon: BarChart3 },
+    ],
+  },
+  {
+    label: 'Compte',
+    items: [
+      { label: 'Mon Profil', path: '/admin/profil', icon: UserCircle },
+    ],
+  },
 ]
 
-const SUPER_ADMIN_EXTRA: NavItem[] = [
-  { label: 'Paramètres', path: '/superadmin/parametres', icon: Settings },
-  { label: "Journaux d'audit", path: '/superadmin/logs', icon: ClipboardList },
-  { label: 'Mon Profil', path: '/superadmin/profil', icon: UserCircle },
+const SUPER_ADMIN_EXTRA: NavGroup[] = [
+  {
+    label: 'Configuration',
+    items: [
+      { label: 'Paramètres', path: '/superadmin/parametres', icon: Settings },
+      { label: "Journaux d'audit", path: '/superadmin/logs', icon: ClipboardList },
+    ],
+  },
 ]
 
 export default function Sidebar() {
   const navigate = useNavigate()
   const { userType, niveauAcces, userName, logout } = useAuthStore()
 
-  let navItems: NavItem[] = []
-  let baseLabel = ''
+  let groups: NavGroup[]
+  let baseLabel: string
 
   if (userType === 'conseillers') {
-    navItems = CONSEILLER_NAV
+    groups = CONSEILLER_GROUPS
     baseLabel = 'Conseiller'
   } else {
-    navItems = [...ADMIN_NAV]
+    groups = [...ADMIN_GROUPS]
     baseLabel = niveauAcces === 'SUPER_ADMIN' ? 'Super Admin' : 'Administrateur'
     if (niveauAcces === 'SUPER_ADMIN') {
-      navItems = [...navItems, ...SUPER_ADMIN_EXTRA]
+      groups = [...groups, ...SUPER_ADMIN_EXTRA]
     }
   }
 
@@ -101,33 +153,45 @@ export default function Sidebar() {
         <p className="text-white/60 text-xs mt-0.5">Espace {baseLabel}</p>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors group',
-                isActive
-                  ? 'bg-white/15 text-white'
-                  : 'text-white/70 hover:text-white hover:bg-white/10'
-              )
-            }
-          >
-            {({ isActive }) => (
-              <>
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
-                <ChevronRight
-                  className={cn(
-                    'w-3.5 h-3.5 ml-auto transition-transform',
-                    isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'
-                  )}
-                />
-              </>
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        {groups.map((group, gi) => (
+          <Fragment key={gi}>
+            {gi > 0 && <div className="mx-2 my-2 border-t border-white/10" />}
+            {group.label && (
+              <p className="px-3 py-1.5 text-[10px] font-semibold text-white/40 uppercase tracking-widest">
+                {group.label}
+              </p>
             )}
-          </NavLink>
+            <div className="space-y-0.5">
+              {group.items.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors group',
+                      isActive
+                        ? 'bg-white/15 text-white'
+                        : 'text-white/70 hover:text-white hover:bg-white/10'
+                    )
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      <item.icon className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                      <ChevronRight
+                        className={cn(
+                          'w-3.5 h-3.5 ml-auto transition-transform',
+                          isActive ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'
+                        )}
+                      />
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </Fragment>
         ))}
       </nav>
 

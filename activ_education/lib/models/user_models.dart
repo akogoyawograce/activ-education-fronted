@@ -99,6 +99,7 @@ class EleveResponse {
   final List<String>? matieresPreferees;
   final String? styleApprentissage;
   final String? metierSouhaite;
+  final String? photoUrl;
   final bool actif;
   final DateTime? createdAt;
 
@@ -115,6 +116,7 @@ class EleveResponse {
     this.matieresPreferees,
     this.styleApprentissage,
     this.metierSouhaite,
+    this.photoUrl,
     required this.actif,
     this.createdAt,
   });
@@ -132,6 +134,7 @@ class EleveResponse {
         matieresPreferees: json['matieresPreferees'] != null ? List<String>.from(json['matieresPreferees']) : null,
         styleApprentissage: json['styleApprentissage'],
         metierSouhaite: json['metierSouhaite'],
+        photoUrl: json['photoUrl'],
         actif: json['actif'] ?? true,
         createdAt: json['createdAt'] != null
             ? DateTime.tryParse(json['createdAt'])

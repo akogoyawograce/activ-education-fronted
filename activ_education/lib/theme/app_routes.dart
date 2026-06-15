@@ -24,6 +24,7 @@ class AppRoutes {
   static const String quiz = '/quiz';
   static const String resultats = '/resultats';
   static const String notes = '/notes';
+  static const String support = '/support';
   static const String faq = '/faq';
   static const String messages = '/messages';
   static const String chat = '/chat';

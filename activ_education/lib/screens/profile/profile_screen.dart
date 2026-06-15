@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
@@ -7,6 +9,7 @@ import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
 import '../errors/empty_content_screen.dart';
 import '../../utils/profile_completion.dart';
+import '../../utils/image_utils.dart';
 import '../historique/historique_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -108,6 +111,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   String get _nomComplet => '$_prenom $_nom';
+
+  String? get _photoUrl => _eleve?.photoUrl;
 
   bool get _isLyceen => _eleve?.typeApprenant == 'LYCEEN';
   bool get _isEtudiant => _eleve?.typeApprenant == 'ETUDIANT';
@@ -603,10 +608,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _uploadPhoto() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Upload photo à venir')),
-    );
+  Future<void> _uploadPhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024);
+    if (picked == null) return;
+    final trackingId = await _api.getTrackingId();
+    if (trackingId == null || !mounted) return;
+    try {
+      final updated = await _api.uploadPhotoProfil(trackingId, File(picked.path));
+      setState(() {
+        if (_type == _ProfileType.eleve) {
+          _eleve = updated;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Photo de profil mise à jour')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: ${_api.handleError(e)}')),
+        );
+      }
+    }
   }
 
   Future<void> _logout() async {
@@ -744,21 +770,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Container(
                   width: 72,
                   height: 72,
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
+                    image: _photoUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(resolveImageUrl(_photoUrl)!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: Center(
-                    child: Text(
-                      _initials,
-                      style: const TextStyle(
-                        fontFamily: 'Poppins',
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
+                  child: _photoUrl == null
+                      ? Center(
+                          child: Text(
+                            _initials,
+                            style: const TextStyle(
+                              fontFamily: 'Poppins',
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
                 Positioned(
                   bottom: 0,

@@ -21,12 +21,14 @@ interface DataTableProps<T> {
   pagination?: Pagination
 }
 
+const widths = [60, 75, 65, 80, 70, 85]
+
 function SkeletonRow({ cols }: { cols: number }) {
   return (
     <tr>
       {Array.from({ length: cols }).map((_, i) => (
         <td key={i} className="px-4 py-3">
-          <div className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${60 + Math.random() * 30}%` }} />
+          <div className="h-4 bg-gray-200 rounded animate-pulse" style={{ width: `${widths[i % widths.length]}%` }} />
         </td>
       ))}
     </tr>

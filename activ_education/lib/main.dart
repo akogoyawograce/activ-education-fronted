@@ -30,6 +30,7 @@ import 'screens/messages/chat_screen.dart';
 import 'screens/messages/rdv_screen.dart';
 import 'screens/home/notifications_screen.dart';
 import 'screens/home/faq_screen.dart';
+import 'screens/home/support_screen.dart';
 import 'screens/home/enfant_suivi_screen.dart';
 import 'screens/messages/rdv_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
@@ -118,6 +119,7 @@ class ActivEducationApp extends StatelessWidget {
           return FicheDetailScreen(fiche: fiche);
         },
         AppRoutes.search: (_) => const GlobalSearchScreen(),
+        AppRoutes.support: (_) => const SupportScreen(),
         AppRoutes.faq: (_) => const FaqScreen(),
         AppRoutes.conseillers: (_) => const ConseillersScreen(),
         AppRoutes.enfantSuivi: (context) {

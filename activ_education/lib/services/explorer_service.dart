@@ -94,7 +94,7 @@ class ExplorerService extends BaseService {
 
   Future<List<String>> getFilieresList() async {
     try {
-      final res = await listerFilieres(page: 0, size: 100);
+      final res = await listerFilieres(page: 0, size: 50);
       return res.content.map((e) => e.titre).toList();
     } catch (_) {
       return ['Informatique', 'Mathématiques', 'Droit', 'Médecine'];

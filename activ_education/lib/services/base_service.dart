@@ -68,8 +68,8 @@ abstract class BaseService {
 
     final dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 3),
-      receiveTimeout: const Duration(seconds: 3),
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 10),
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
@@ -90,8 +90,10 @@ abstract class BaseService {
         handler.next(options);
       },
       onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          final requestUrl = error.requestOptions.path;
+        final requestUrl = error.requestOptions.path;
+        final retryFlag = error.requestOptions.headers['X-Retry-After-Refresh'];
+
+        if (error.response?.statusCode == 401 && retryFlag != 'true') {
           debugPrint('401 received for $requestUrl');
           if (requestUrl.endsWith('/api/v1/auth/login') ||
               requestUrl.endsWith('/api/v1/auth/refresh')) {
@@ -116,33 +118,15 @@ abstract class BaseService {
             return handler.next(error);
           }
 
-          final baseUrl =
-              dotenv.get('API_BASE_URL', fallback: 'http://localhost:8080');
-          final method = error.requestOptions.method;
-          final path = error.requestOptions.path;
-          final data = error.requestOptions.data;
-          final queryParams = error.requestOptions.queryParameters;
+          final opts = error.requestOptions;
+          opts.headers['Authorization'] = 'Bearer $token';
+          opts.headers['X-Retry-After-Refresh'] = 'true';
 
-          debugPrint('Retrying $method $path with new token');
+          debugPrint('Retrying ${opts.method} $requestUrl with new token');
 
           try {
-            final retryResponse = await Dio().request(
-              '$baseUrl$path',
-              data: data,
-              queryParameters: queryParams.isNotEmpty ? queryParams : null,
-              options: Options(
-                method: method,
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': 'Bearer $token',
-                },
-                validateStatus: (_) => true,
-                connectTimeout: const Duration(seconds: 5),
-                receiveTimeout: const Duration(seconds: 5),
-              ),
-            );
-            debugPrint(
-                'Retry response: ${retryResponse.statusCode} for $method $path');
+            final retryResponse = await _dio.fetch(opts);
+            debugPrint('Retry response: ${retryResponse.statusCode} for ${opts.method} $requestUrl');
             if (retryResponse.statusCode != null && retryResponse.statusCode! >= 200 && retryResponse.statusCode! < 300) {
               return handler.resolve(retryResponse);
             }

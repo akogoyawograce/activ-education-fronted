@@ -52,7 +52,7 @@ export default function AdminProfilPage() {
   )
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
+function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
     <div className="flex items-center gap-3">
       <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center shrink-0">

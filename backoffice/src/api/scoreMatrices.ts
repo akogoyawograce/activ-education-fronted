@@ -2,8 +2,8 @@ import api from './client'
 import type { ScoreMatriceResponse, ScoreMatriceRequest } from '@/types'
 
 export async function getAll() {
-  const response = await api.get<ScoreMatriceResponse[]>('/score-matrices')
-  return response.data
+  const response = await api.get<{ content: ScoreMatriceResponse[] }>('/score-matrices')
+  return response.data.content
 }
 
 export async function getById(id: string) {
