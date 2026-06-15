@@ -162,7 +162,7 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
           telephone: args['phone'],
           motDePasse: args['password'] ?? '',
         );
-        debugPrint('Inscription parent - requête: ${request.toJson()}');
+        // Registration request sent (request details not logged for security)
         final response = await api.auth.inscrireParent(request);
         trackingId = response.trackingId;
       } else {
@@ -189,7 +189,7 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
           matieresPreferees: _selectedMatieres.toList(),
           styleApprentissage: _selectedStyle,
         );
-        debugPrint('Inscription élève - requête: ${request.toJson()}');
+        // Registration request sent (request details not logged for security)
         final response = await api.auth.inscrireEleve(request);
         trackingId = response.trackingId;
       }
@@ -217,11 +217,7 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
       }
     } catch (e) {
       setState(() => _isLoading = false);
-      debugPrint('Erreur lors de l\'inscription ($userRole): $e');
-      if (e is DioException) {
-        debugPrint(
-            'DioException response: ${e.response?.statusCode} ${e.response?.data}');
-      }
+      // Registration error (status code not logged for security)
       if (mounted) {
         final is401 = e is DioException && e.response?.statusCode == 401;
         if (is401 && userRole != UserRole.parent) {

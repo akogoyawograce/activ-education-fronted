@@ -94,7 +94,7 @@ abstract class BaseService {
         final retryFlag = error.requestOptions.headers['X-Retry-After-Refresh'];
 
         if (error.response?.statusCode == 401 && retryFlag != 'true') {
-          debugPrint('401 received for $requestUrl');
+          debugPrint('401 received');
           if (requestUrl.endsWith('/api/v1/auth/login') ||
               requestUrl.endsWith('/api/v1/auth/refresh')) {
             await _storage.deleteAll();
@@ -103,7 +103,7 @@ abstract class BaseService {
 
           final refreshed = await _refreshWithLock();
           if (!refreshed) {
-            debugPrint('Refresh failed — deleting tokens');
+            // Refresh failed — clearing tokens
             await _storage.deleteAll();
             BaseService.clearUserCache();
             return handler.next(error);
@@ -112,7 +112,6 @@ abstract class BaseService {
           final token = BaseService.cachedAccessToken ??
               await _storage.read(key: 'auth_token');
           if (token == null || token.isEmpty) {
-            debugPrint('Token null after refresh — deleting tokens');
             await _storage.deleteAll();
             BaseService.clearUserCache();
             return handler.next(error);
@@ -122,18 +121,15 @@ abstract class BaseService {
           opts.headers['Authorization'] = 'Bearer $token';
           opts.headers['X-Retry-After-Refresh'] = 'true';
 
-          debugPrint('Retrying ${opts.method} $requestUrl with new token');
+          // Retrying request after token refresh
 
           try {
             final retryResponse = await _dio.fetch(opts);
-            debugPrint('Retry response: ${retryResponse.statusCode} for ${opts.method} $requestUrl');
             if (retryResponse.statusCode != null && retryResponse.statusCode! >= 200 && retryResponse.statusCode! < 300) {
               return handler.resolve(retryResponse);
             }
-            debugPrint('Retry after refresh still failed with ${retryResponse.statusCode} — not an auth issue');
             return handler.next(error);
-          } catch (retryError) {
-            debugPrint('Retry after refresh failed: $retryError');
+          } catch (_) {
             return handler.next(error);
           }
         }
@@ -163,7 +159,6 @@ abstract class BaseService {
     try {
       final refreshToken = await getRefreshToken();
       if (refreshToken == null || refreshToken.isEmpty) {
-        debugPrint('Refresh token missing');
         return false;
       }
       final baseUrl =
@@ -173,8 +168,7 @@ abstract class BaseService {
         data: {'refreshToken': refreshToken},
         options: Options(validateStatus: (_) => true),
       );
-      debugPrint('Refresh response status: ${response.statusCode}');
-      debugPrint('Refresh response data: ${response.data}');
+      // Token response logged only in debug builds, redacted in release
       if (response.statusCode != 200) {
         return false;
       }
@@ -190,10 +184,8 @@ abstract class BaseService {
         }
         return true;
       }
-      debugPrint('Refresh response missing accessToken');
       return false;
-    } catch (e) {
-      debugPrint('Refresh token exception: $e');
+    } catch (_) {
       return false;
     }
   }
