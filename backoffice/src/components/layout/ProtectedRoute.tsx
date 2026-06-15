@@ -39,10 +39,7 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     loadFromStorage()
   }, [loadFromStorage])
 
-  const storedToken = localStorage.getItem('access_token')
-  const effectiveAuth = isAuthenticated || !!storedToken
-
-  if (!effectiveAuth) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

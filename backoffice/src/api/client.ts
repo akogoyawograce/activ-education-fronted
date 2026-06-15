@@ -1,11 +1,12 @@
 import axios from 'axios'
+import { useAuthStore } from '@/stores/authStore'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
 })
 
 api.interceptors.request.use((config) => {
-  const accessToken = localStorage.getItem('access_token')
+  const { accessToken } = useAuthStore.getState()
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`
   }
@@ -19,7 +20,6 @@ let refreshQueue: Array<{
 }> = []
 
 function clearAuthStorage() {
-  localStorage.removeItem('access_token')
   localStorage.removeItem('refresh_token')
   localStorage.removeItem('user_tracking_id')
   localStorage.removeItem('user_type')
@@ -29,6 +29,7 @@ function clearAuthStorage() {
 
 function redirectToLogin() {
   clearAuthStorage()
+  useAuthStore.getState().logout()
   window.location.href = '/login'
 }
 
@@ -59,7 +60,7 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
-    const refreshToken = localStorage.getItem('refresh_token')
+    const { refreshToken } = useAuthStore.getState()
     if (!refreshToken) {
       redirectToLogin()
       return Promise.reject(error)
@@ -79,13 +80,10 @@ api.interceptors.response.use(
 
     try {
       const response = await axios.post(`${api.defaults.baseURL}/auth/refresh`, { refreshToken })
-      const { accessToken, refreshToken: newRefreshToken } = response.data
-      localStorage.setItem('access_token', accessToken)
-      if (newRefreshToken) {
-        localStorage.setItem('refresh_token', newRefreshToken)
-      }
-      processQueue(accessToken)
-      originalRequest.headers.Authorization = `Bearer ${accessToken}`
+      const { accessToken: newAccess, refreshToken: newRefresh } = response.data
+      useAuthStore.getState().setTokens(newAccess, newRefresh)
+      processQueue(newAccess)
+      originalRequest.headers.Authorization = `Bearer ${newAccess}`
       return api(originalRequest)
     } catch (refreshError) {
       processQueue(null, refreshError)

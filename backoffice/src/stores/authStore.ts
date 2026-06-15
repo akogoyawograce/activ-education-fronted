@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { login as apiLogin, getMe } from '@/api/auth'
+import { login as apiLogin, getMe, refreshToken as apiRefreshToken } from '@/api/auth'
 import { getById as getAdmin } from '@/api/administrateurs'
 import type { TokenResponse } from '@/types'
 
@@ -26,10 +26,11 @@ interface AuthState {
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
-  loadFromStorage: () => void
+  loadFromStorage: () => Promise<void>
+  setTokens: (accessToken: string, refreshToken: string) => void
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   refreshToken: null,
   trackingId: null,
@@ -51,8 +52,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
     }
 
-    // Save access_token FIRST so subsequent API calls use the new token
-    localStorage.setItem('access_token', tokenRes.accessToken)
+    // Access token stays in memory only — never written to localStorage
     localStorage.setItem('refresh_token', tokenRes.refreshToken)
     localStorage.setItem('user_tracking_id', tokenRes.trackingId)
     localStorage.setItem('user_type', userType)
@@ -86,8 +86,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
   },
 
+  setTokens: (accessToken: string, refreshToken: string) => {
+    localStorage.setItem('refresh_token', refreshToken)
+    set({ accessToken, refreshToken })
+  },
+
   logout: () => {
-    localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     localStorage.removeItem('user_tracking_id')
     localStorage.removeItem('user_type')
@@ -104,21 +108,43 @@ export const useAuthStore = create<AuthState>((set) => ({
     })
   },
 
-  loadFromStorage: () => {
-    const accessToken = localStorage.getItem('access_token')
+  loadFromStorage: async () => {
+    const refreshToken = localStorage.getItem('refresh_token')
     const trackingId = localStorage.getItem('user_tracking_id')
     const userType = localStorage.getItem('user_type')
     const niveauAcces = localStorage.getItem('user_niveau_acces')
     const userName = localStorage.getItem('user_name')
-    if (accessToken && trackingId && userType) {
+
+    if (!refreshToken || !trackingId || !userType) return
+
+    // Use refresh token to get a new access token (memory only)
+    try {
+      const tokenRes: TokenResponse = await apiRefreshToken(refreshToken)
+      localStorage.setItem('refresh_token', tokenRes.refreshToken)
       set({
-        accessToken,
-        refreshToken: localStorage.getItem('refresh_token'),
+        accessToken: tokenRes.accessToken,
+        refreshToken: tokenRes.refreshToken,
         trackingId,
         userType,
         niveauAcces,
         userName,
         isAuthenticated: true,
+      })
+    } catch {
+      // Refresh failed — clear everything
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('user_tracking_id')
+      localStorage.removeItem('user_type')
+      localStorage.removeItem('user_niveau_acces')
+      localStorage.removeItem('user_name')
+      set({
+        accessToken: null,
+        refreshToken: null,
+        trackingId: null,
+        userType: null,
+        niveauAcces: null,
+        userName: null,
+        isAuthenticated: false,
       })
     }
   },
