@@ -2,8 +2,8 @@
 *.md
 
 # Env files (secrets)
-.env
-.env.*
+# .env
+# .env.*
 
 # Screenshots & old mockups
 ap/

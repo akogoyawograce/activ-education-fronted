@@ -68,5 +68,5 @@ suite.md
 /activ_education/activ_education/CLAUDE.md
 /activ_education/activ_education/API_ROUTES.md
 /activ_education/activ_education/cahier_de_charge.md  
-.env
-.env.backup
+# .env
+# .env.backup
