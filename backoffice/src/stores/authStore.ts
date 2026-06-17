@@ -30,7 +30,7 @@ interface AuthState {
   setTokens: (accessToken: string, refreshToken: string) => void
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set, _get) => ({
   accessToken: null,
   refreshToken: null,
   trackingId: null,
@@ -53,6 +53,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
 
     // Access token stays in memory only — never written to localStorage
+    set({
+      accessToken: tokenRes.accessToken,
+      refreshToken: tokenRes.refreshToken,
+      trackingId: tokenRes.trackingId,
+      userType,
+      niveauAcces,
+      userName: null,
+      isAuthenticated: true,
+    })
+
     localStorage.setItem('refresh_token', tokenRes.refreshToken)
     localStorage.setItem('user_tracking_id', tokenRes.trackingId)
     localStorage.setItem('user_type', userType)
@@ -75,15 +85,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (niveauAcces) localStorage.setItem('user_niveau_acces', niveauAcces)
     if (userName) localStorage.setItem('user_name', userName)
 
-    set({
-      accessToken: tokenRes.accessToken,
-      refreshToken: tokenRes.refreshToken,
-      trackingId: tokenRes.trackingId,
-      userType,
-      niveauAcces,
-      userName: userName || null,
-      isAuthenticated: true,
-    })
+    set({ niveauAcces, userName: userName || null })
   },
 
   setTokens: (accessToken: string, refreshToken: string) => {

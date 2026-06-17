@@ -5,12 +5,14 @@ import 'package:image_picker/image_picker.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
+import '../../services/base_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
 import '../errors/empty_content_screen.dart';
 import '../../utils/profile_completion.dart';
 import '../../utils/image_utils.dart';
 import '../historique/historique_screen.dart';
+import '../documents/documents_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -30,6 +32,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<FavoriResponse> _favoris = [];
   List<HistoriqueResponse> _historique = [];
   int _totalFavoris = 0;
+  int _documentCount = 0;
   bool _isLoading = true;
 
   @override
@@ -39,7 +42,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadAll() async {
-    await Future.wait([_loadProfile(), _loadFavoris(), _loadHistorique()]);
+    await Future.wait([_loadProfile(), _loadFavoris(), _loadHistorique(), _loadDocumentCount()]);
   }
 
   Future<void> _loadProfile() async {
@@ -205,20 +208,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return "À l'instant";
   }
 
-  Future<void> _refreshProfile() async {
-    final trackingId = await _api.getTrackingId();
-    if (trackingId == null) return;
-    try {
-      if (_type == _ProfileType.parent) {
-        final parent = await _api.auth.getParent(trackingId);
-        setState(() { _parent = parent; });
-      } else {
-        final eleve = await _api.getEleve(trackingId);
-        setState(() { _eleve = eleve; });
-      }
-    } catch (_) {}
-  }
-
   // ─── MODALS (Élève) ────────────────────────────────────────────────────
 
   static const _niveauxCollegien = ['6ème', '5ème', '4ème', '3ème'];
@@ -335,7 +324,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             border: Border.all(color: AppColors.cardBorder),
           ),
           child: DropdownButtonFormField<String>(
-            initialValue: items.contains(value) ? value : null,
+            value: items.contains(value) ? value : null,
             decoration: const InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -544,9 +533,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         styleApprentissage: e.styleApprentissage,
         metierSouhaite: metierSouhaite ?? e.metierSouhaite,
       );
-      await _api.modifierEleve(trackingId, req);
-      await _refreshProfile();
+      final updated = await _api.modifierEleve(trackingId, req);
+      BaseService.clearCache();
       if (mounted) {
+        setState(() { _eleve = updated; });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profil mis à jour')),
         );
@@ -580,9 +570,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (nom != null && nom.isNotEmpty) data['nom'] = nom;
       if (prenom != null && prenom.isNotEmpty) data['prenom'] = prenom;
       if (telephone != null && telephone.isNotEmpty) data['telephone'] = telephone;
-      await _api.modifierParent(trackingId, data);
-      await _refreshProfile();
+      final updated = await _api.modifierParent(trackingId, data);
+      BaseService.clearCache();
       if (mounted) {
+        setState(() { _parent = updated; });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profil mis à jour')),
         );
@@ -602,9 +593,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _loadDocumentCount() async {
+    try {
+      final trackingId = await _api.getTrackingId();
+      if (!mounted || trackingId == null) return;
+      final count = await _api.countDocuments(trackingId);
+      if (!mounted) return;
+      setState(() => _documentCount = count);
+    } catch (_) {}
+  }
+
   void _showDocuments() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Documents — à venir')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => DocumentsScreen(trackingId: _eleve!.trackingId),
+      ),
     );
   }
 
@@ -1005,7 +1009,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _sectionItem(
         icon: Icons.folder_open,
         title: 'Mes documents',
-        subtitle: 'X fichiers (bulletins)',
+        subtitle: '$_documentCount document${_documentCount > 1 ? 's' : ''}',
         onTap: _showDocuments,
       ),
       const Divider(height: 1, color: AppColors.cardBorder),

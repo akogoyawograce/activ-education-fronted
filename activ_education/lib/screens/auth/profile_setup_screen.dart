@@ -171,7 +171,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           border: Border.all(color: AppColors.cardBorder, width: 1.5),
                         ),
                         child: DropdownButtonFormField<String>(
-                          initialValue: _selectedClass,
+                          value: _selectedClass,
                           decoration: const InputDecoration(
                             border: InputBorder.none,
                             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -214,7 +214,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               ),
                             )
                           : DropdownButtonFormField<String>(
-                              initialValue: _selectedCity,
+                              value: _selectedCity,
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),

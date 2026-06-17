@@ -304,7 +304,7 @@ class _DashboardConseillerState extends State<DashboardConseiller> {
             value: _isAvailable,
             onChanged: _toggleDisponibilite,
             activeTrackColor: AppColors.success.withValues(alpha: 0.2),
-            activeThumbColor: AppColors.success,
+            thumbColor: WidgetStateProperty.all(AppColors.success),
           ),
           const SizedBox(width: 8),
           Text(

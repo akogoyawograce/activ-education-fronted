@@ -289,6 +289,64 @@ class ParentResponse {
       );
 }
 
+enum DocumentType { BULLETIN, ATTESTATION, RELEVE_NOTES, CERTIFICAT_SCOLARITE, AUTRE }
+
+class DocumentResponse {
+  final int id;
+  final String urlFichier;
+  final String nomFichier;
+  final String typeDocument;
+  final String? dateDocument;
+  final String? description;
+  final int? tailleFichier;
+  final String? typeMime;
+  final DateTime? createdAt;
+
+  DocumentResponse({
+    required this.id,
+    required this.urlFichier,
+    required this.nomFichier,
+    required this.typeDocument,
+    this.dateDocument,
+    this.description,
+    this.tailleFichier,
+    this.typeMime,
+    this.createdAt,
+  });
+
+  factory DocumentResponse.fromJson(Map<String, dynamic> json) =>
+      DocumentResponse(
+        id: json['id'] ?? 0,
+        urlFichier: json['urlFichier'] ?? '',
+        nomFichier: json['nomFichier'] ?? '',
+        typeDocument: json['typeDocument'] ?? 'AUTRE',
+        dateDocument: json['dateDocument'],
+        description: json['description'],
+        tailleFichier: json['tailleFichier'],
+        typeMime: json['typeMime'],
+        createdAt: json['createdAt'] != null
+            ? DateTime.tryParse(json['createdAt'])
+            : null,
+      );
+
+  String get tailleFormatted {
+    if (tailleFichier == null) return '';
+    if (tailleFichier! < 1024) return '${tailleFichier} o';
+    if (tailleFichier! < 1024 * 1024) return '${(tailleFichier! / 1024).toStringAsFixed(1)} Ko';
+    return '${(tailleFichier! / (1024 * 1024)).toStringAsFixed(1)} Mo';
+  }
+
+  String get typeDocumentLabel {
+    switch (typeDocument) {
+      case 'BULLETIN': return 'Bulletin';
+      case 'ATTESTATION': return 'Attestation';
+      case 'RELEVE_NOTES': return 'Relevé de notes';
+      case 'CERTIFICAT_SCOLARITE': return 'Certificat de scolarité';
+      default: return 'Document';
+    }
+  }
+}
+
 class AdministrateurRequest {
   final String nom;
   final String prenom;

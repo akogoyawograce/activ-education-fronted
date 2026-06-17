@@ -177,6 +177,48 @@ class ApiService extends BaseService {
   Future<void> marquerToutesLues(String id) =>
       interaction.marquerToutesLues(id);
 
+  // Documents
+  Future<PageResponse<DocumentResponse>> getDocuments(String trackingId,
+      {int page = 0, int size = 20}) async {
+    final res = await dio.get(
+      '/api/v1/eleves/$trackingId/documents',
+      queryParameters: {'page': page, 'size': size},
+    );
+    return PageResponse.fromJson(
+      res.data, (json) => DocumentResponse.fromJson(json),
+    );
+  }
+
+  Future<DocumentResponse> uploadDocument(
+    String trackingId,
+    File file, {
+    required String typeDocument,
+    String? description,
+    String? dateDocument,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(file.path,
+          filename: file.path.split('/').last),
+      'typeDocument': typeDocument,
+      if (description != null) 'description': description,
+      if (dateDocument != null) 'dateDocument': dateDocument,
+    });
+    final res = await dio.post(
+      '/api/v1/eleves/$trackingId/documents',
+      data: formData,
+    );
+    return DocumentResponse.fromJson(res.data);
+  }
+
+  Future<void> deleteDocument(String trackingId, int documentId) async {
+    await dio.delete('/api/v1/eleves/$trackingId/documents/$documentId');
+  }
+
+  Future<int> countDocuments(String trackingId) async {
+    final res = await dio.get('/api/v1/eleves/$trackingId/documents/count');
+    return res.data as int;
+  }
+
   // Files
   Future<FileUploadResponse> uploadFichier(File f, String t) =>
       files.uploadFichier(f, t);
