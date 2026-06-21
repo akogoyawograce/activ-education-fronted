@@ -9,6 +9,7 @@ import '../../widgets/skeleton_widget.dart';
 import '../../services/recommendation_service.dart';
 import '../../widgets/recommendations_section.dart';
 import '../../utils/profile_completion.dart';
+import '../../utils/image_utils.dart';
 
 class DashboardBachelier extends StatefulWidget {
   final String? typeApprenant;
@@ -285,19 +286,33 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.primary, width: 2),
                 ),
-                child: CircleAvatar(
-                  radius: 24,
-                  backgroundColor: AppColors.backgroundGrey,
-                  child: Text(
-                    _userName != null && _userName!.isNotEmpty
-                        ? _userName![0].toUpperCase()
-                        : 'B',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.backgroundGrey,
+                    image: _userProfile?.photoUrl != null
+                        ? DecorationImage(
+                            image: NetworkImage(resolveImageUrl(_userProfile!.photoUrl)!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
+                  child: _userProfile?.photoUrl == null
+                      ? Center(
+                          child: Text(
+                            _userName != null && _userName!.isNotEmpty
+                                ? _userName![0].toUpperCase()
+                                : 'B',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ),
