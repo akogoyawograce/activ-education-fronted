@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../theme/app_theme.dart';
@@ -47,7 +46,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
       allowedExtensions: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'],
     );
     if (result == null || result.files.isEmpty) return;
-    final file = File(result.files.single.path!);
+    final pickedFile = result.files.single;
 
     if (!mounted) return;
 
@@ -141,7 +140,7 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
     try {
       await _api.uploadDocument(
         widget.trackingId,
-        file,
+        pickedFile,
         typeDocument: typeDocument!,
         description: description,
         dateDocument: dateDocument,

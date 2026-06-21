@@ -36,6 +36,18 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
+      if (token.requires2fa && token.challengeToken != null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Navigator.pushNamed(
+            context,
+            AppRoutes.totpVerify,
+            arguments: {'challengeToken': token.challengeToken, 'email': _emailController.text.trim()},
+          );
+        }
+        return;
+      }
+
       await api.auth.saveToken(token.accessToken);
       await api.auth.saveRefreshToken(token.refreshToken);
       await api.auth.saveUserData(

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
+import '../../services/base_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -90,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (token != null && trackingId != null && _isTokenValid(token)) {
         Navigator.pushReplacementNamed(context, AppRoutes.home);
       } else {
-        await api.storage.deleteAll();
+        await BaseService.deleteAllSecure();
         Navigator.pushReplacementNamed(context, AppRoutes.onboarding);
       }
     });

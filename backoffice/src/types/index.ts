@@ -22,6 +22,8 @@ export interface TokenResponse {
   typeUtilisateur: string
   roles: string[]
   expiresInMs: number
+  requires2fa?: boolean
+  challengeToken?: string
 }
 
 export interface EleveResponse {

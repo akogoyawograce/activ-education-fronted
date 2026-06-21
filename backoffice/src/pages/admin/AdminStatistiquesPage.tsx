@@ -23,36 +23,38 @@ import * as statsService from '@/api/stats'
 import KpiCardGrid from '@/components/shared/KpiCardGrid'
 import PageHeader from '@/components/shared/PageHeader'
 
-const dailyActivity = [
-  { jour: 'Lun', visites: 120, inscrits: 18, quiz: 45 },
-  { jour: 'Mar', visites: 95, inscrits: 12, quiz: 38 },
-  { jour: 'Mer', visites: 150, inscrits: 24, quiz: 62 },
-  { jour: 'Jeu', visites: 110, inscrits: 15, quiz: 51 },
-  { jour: 'Ven', visites: 80, inscrits: 10, quiz: 33 },
-  { jour: 'Sam', visites: 45, inscrits: 5, quiz: 20 },
-  { jour: 'Dim', visites: 30, inscrits: 3, quiz: 12 },
-]
+const tooltipStyle = {
+  borderRadius: 12,
+  border: '1px solid #E5E7EB',
+  backgroundColor: '#FFFFFF',
+}
 
-const favoriteParcours = [
-  { name: 'Informatique', value: 120 },
-  { name: 'Médecine', value: 95 },
-  { name: 'Commerce', value: 80 },
-  { name: 'Sciences', value: 65 },
-  { name: 'Arts', value: 45 },
-  { name: 'Lettres', value: 30 },
-]
-
-const niveauDistribution = [
-  { name: 'Collège', value: 40, color: '#3730E8' },
-  { name: 'Lycée', value: 35, color: '#F59E0B' },
-  { name: 'Université', value: 20, color: '#10B981' },
-  { name: 'Autre', value: 5, color: '#EF4444' },
-]
+const COLORS = ['#3730E8', '#F59E0B', '#10B981', '#EF4444', '#8B5CF6', '#EC4899']
 
 export default function AdminStatistiquesPage() {
   const { data: kpis } = useQuery({
     queryKey: ['admin-stats-kpis'],
     queryFn: () => statsService.getKPIs(),
+  })
+
+  const { data: inscriptions } = useQuery({
+    queryKey: ['admin-stats-inscriptions'],
+    queryFn: () => statsService.getInscriptions(30),
+  })
+
+  const { data: quizCompletes } = useQuery({
+    queryKey: ['admin-stats-quiz-completes'],
+    queryFn: () => statsService.getQuizCompletes(30),
+  })
+
+  const { data: rdvData } = useQuery({
+    queryKey: ['admin-stats-rdv'],
+    queryFn: () => statsService.getRDV(12),
+  })
+
+  const { data: quizDomaine } = useQuery({
+    queryKey: ['admin-stats-quiz-domaine'],
+    queryFn: () => statsService.getQuizParDomaine(),
   })
 
   const kpiItems = [
@@ -75,18 +77,33 @@ export default function AdminStatistiquesPage() {
       color: 'success' as const,
     },
     {
-      title: 'Utilisateurs actifs',
-      value: 156,
+      title: 'Quiz complétés',
+      value: kpis?.totalResultats ?? 0,
       icon: Users,
       color: 'blue' as const,
     },
   ]
 
-  const tooltipStyle = {
-    borderRadius: 12,
-    border: '1px solid #E5E7EB',
-    backgroundColor: '#FFFFFF',
-  }
+  const mergedActivity = (inscriptions ?? []).map((ins, i) => {
+    const quiz = quizCompletes?.[i]
+    return {
+      jour: ins.date?.slice(5) ?? '',
+      inscrits: ins.count,
+      quiz: quiz?.count ?? 0,
+    }
+  })
+
+  const domaineData = quizDomaine
+    ? Object.entries(quizDomaine).map(([name, value]) => ({ name, value }))
+    : []
+
+  const monthLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+
+  const rdvChartData = (rdvData ?? []).map((r) => {
+    const parts = r.mois.split('-')
+    const m = monthLabels[parseInt(parts[1]) - 1] ?? parts[1]
+    return { mois: `${m} ${parts[0]}`, rdv: r.count }
+  })
 
   return (
     <div className="space-y-6">
@@ -100,37 +117,29 @@ export default function AdminStatistiquesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-card rounded-[12px] border border-border p-5">
           <h3 className="text-base font-semibold text-text-main mb-4">
-            Activité quotidienne
+            Inscriptions et quiz complétés (30 jours)
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyActivity}>
+              <LineChart data={mergedActivity}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                 <XAxis dataKey="jour" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Line
                   type="monotone"
-                  dataKey="visites"
-                  stroke="#3730E8"
-                  strokeWidth={2}
-                  dot={{ fill: '#3730E8', r: 4 }}
-                  name="Visites"
-                />
-                <Line
-                  type="monotone"
                   dataKey="inscrits"
                   stroke="#10B981"
                   strokeWidth={2}
-                  dot={{ fill: '#10B981', r: 4 }}
-                  name="Inscrits"
+                  dot={{ fill: '#10B981', r: 3 }}
+                  name="Inscriptions"
                 />
                 <Line
                   type="monotone"
                   dataKey="quiz"
                   stroke="#F59E0B"
                   strokeWidth={2}
-                  dot={{ fill: '#F59E0B', r: 4 }}
+                  dot={{ fill: '#F59E0B', r: 3 }}
                   name="Quiz complétés"
                 />
               </LineChart>
@@ -140,20 +149,20 @@ export default function AdminStatistiquesPage() {
 
         <div className="bg-card rounded-[12px] border border-border p-5">
           <h3 className="text-base font-semibold text-text-main mb-4">
-            Parcours favoris
+            Rendez-vous par mois
           </h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={favoriteParcours}>
+              <BarChart data={rdvChartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="name" stroke="#6B7280" fontSize={12} />
+                <XAxis dataKey="mois" stroke="#6B7280" fontSize={12} />
                 <YAxis stroke="#6B7280" fontSize={12} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar
-                  dataKey="value"
+                  dataKey="rdv"
                   fill="#3730E8"
                   radius={[4, 4, 0, 0]}
-                  name="Intérêt"
+                  name="RDV"
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -164,22 +173,23 @@ export default function AdminStatistiquesPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-card rounded-[12px] border border-border p-5">
           <h3 className="text-base font-semibold text-text-main mb-4">
-            Répartition par niveau
+            Quiz par domaine
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={niveauDistribution}
+                  data={domaineData}
                   cx="50%"
                   cy="50%"
                   innerRadius={55}
                   outerRadius={80}
                   paddingAngle={4}
                   dataKey="value"
+                  nameKey="name"
                 >
-                  {niveauDistribution.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
+                  {domaineData.map((_, index) => (
+                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} />
@@ -187,16 +197,16 @@ export default function AdminStatistiquesPage() {
             </ResponsiveContainer>
           </div>
           <div className="flex flex-col gap-2 mt-2">
-            {niveauDistribution.map((item) => (
+            {domaineData.map((item, i) => (
               <div key={item.name} className="flex items-center justify-between text-sm">
                 <span className="flex items-center gap-2">
                   <span
                     className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: item.color }}
+                    style={{ backgroundColor: COLORS[i % COLORS.length] }}
                   />
                   {item.name}
                 </span>
-                <span className="font-medium text-text-main">{item.value}%</span>
+                <span className="font-medium text-text-main">{item.value}</span>
               </div>
             ))}
           </div>
@@ -223,8 +233,8 @@ export default function AdminStatistiquesPage() {
               <p className="text-xs text-text-secondary mt-1">Quiz</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-4 text-center">
-              <p className="text-2xl font-bold text-danger">42</p>
-              <p className="text-xs text-text-secondary mt-1">Fiches</p>
+              <p className="text-2xl font-bold text-danger">{kpis?.totalResultats ?? '-'}</p>
+              <p className="text-xs text-text-secondary mt-1">Quiz complétés</p>
             </div>
           </div>
         </div>

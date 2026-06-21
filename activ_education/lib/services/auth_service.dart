@@ -22,22 +22,50 @@ class AuthService extends BaseService {
 
   /// Save JWT access token
   Future<void> saveToken(String token) async {
-    await storage.write(key: 'auth_token', value: token);
+    await BaseService.writeSecure('auth_token', token);
     BaseService.cachedAccessToken = token;
   }
 
   /// Save refresh token
   Future<void> saveRefreshToken(String token) async {
-    await storage.write(key: 'refresh_token', value: token);
+    await BaseService.writeSecure('refresh_token', token);
     BaseService.cachedRefreshToken = token;
+  }
+
+  // TOTP / 2FA
+  Future<Map<String, dynamic>> generateTotp() async {
+    final res = await dio.post('/api/v1/auth/2fa/generate');
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<bool> verifyTotp(int code) async {
+    final res = await dio.post('/api/v1/auth/2fa/verify', data: {'code': code});
+    return res.data['success'] ?? false;
+  }
+
+  Future<void> disableTotp() async {
+    await dio.post('/api/v1/auth/2fa/disable');
+  }
+
+  Future<bool> getTotpStatus() async {
+    final res = await dio.get('/api/v1/auth/2fa/status');
+    return res.data['enabled'] ?? false;
+  }
+
+  Future<TokenResponse> validateTotpLogin(String challengeToken, int code) async {
+    final res = await dio.post('/api/v1/auth/2fa/validate', data: {
+      'challengeToken': challengeToken,
+      'code': code,
+    });
+    return TokenResponse.fromJson(res.data);
   }
 
   Future<void> saveUserData({
     required String trackingId,
     required String role,
   }) async {
-    await storage.write(key: 'user_tracking_id', value: trackingId);
-    await storage.write(key: 'user_role', value: role);
+    await BaseService.writeSecure('user_tracking_id', trackingId);
+    await BaseService.writeSecure('user_role', role);
     BaseService.cachedTrackingId = trackingId;
     BaseService.cachedUserRole = role;
   }
@@ -48,7 +76,7 @@ class AuthService extends BaseService {
     } catch (_) {}
     BaseService.clearCache();
     BaseService.clearUserCache();
-    await storage.deleteAll();
+    await BaseService.deleteAllSecure();
     _nomCache.clear();
     AuthImage.clearTokenCache();
   }
@@ -59,9 +87,31 @@ class AuthService extends BaseService {
     } catch (_) {}
     BaseService.clearCache();
     BaseService.clearUserCache();
-    await storage.deleteAll();
+    await BaseService.deleteAllSecure();
     _nomCache.clear();
     AuthImage.clearTokenCache();
+  }
+
+  // Forgot Password & OTP
+  Future<void> forgotPassword(String email) async {
+    await dio.post('/api/v1/auth/forgot-password', data: {'email': email});
+  }
+
+  Future<Map<String, dynamic>> verifyOtp(String email, String code) async {
+    final res = await dio.post('/api/v1/auth/otp/verify', data: {
+      'email': email,
+      'code': code,
+    });
+    return res.data as Map<String, dynamic>;
+  }
+
+  Future<void> resetPassword(
+      String email, String resetToken, String newPassword) async {
+    await dio.post('/api/v1/auth/reset-password', data: {
+      'email': email,
+      'resetToken': resetToken,
+      'nouveauMotDePasse': newPassword,
+    });
   }
 
   // Registration (public endpoints)

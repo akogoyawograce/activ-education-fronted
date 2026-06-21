@@ -21,6 +21,8 @@ class TokenResponse {
   final String typeUtilisateur;
   final List<String> roles;
   final int expiresInMs;
+  final bool requires2fa;
+  final String? challengeToken;
 
   TokenResponse({
     required this.accessToken,
@@ -29,6 +31,8 @@ class TokenResponse {
     required this.typeUtilisateur,
     required this.roles,
     required this.expiresInMs,
+    this.requires2fa = false,
+    this.challengeToken,
   });
 
   factory TokenResponse.fromJson(Map<String, dynamic> json) => TokenResponse(
@@ -38,6 +42,8 @@ class TokenResponse {
         typeUtilisateur: json['typeUtilisateur'] ?? '',
         roles: List<String>.from(json['roles'] ?? []),
         expiresInMs: json['expiresInMs'] ?? 0,
+        requires2fa: json['requires2fa'] ?? false,
+        challengeToken: json['challengeToken'],
       );
 }
 

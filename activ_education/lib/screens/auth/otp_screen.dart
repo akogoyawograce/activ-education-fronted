@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
-import '../../services/api_service.dart';
 import '../../widgets/common_widgets.dart';
 
 class OtpScreen extends StatefulWidget {
@@ -23,10 +23,8 @@ class _OtpScreenState extends State<OtpScreen> {
   bool _isLoading = false;
   bool _canResend = false;
 
-  // Args passés depuis ForgotPassword
   String _type = 'email';
   String _value = '';
-  String _role = 'ELEVE';
 
   @override
   void initState() {
@@ -42,7 +40,6 @@ class _OtpScreenState extends State<OtpScreen> {
     if (args != null) {
       _type = args['type'] ?? 'email';
       _value = args['value'] ?? '';
-      _role = args['role'] ?? 'ELEVE';
     }
   }
 
@@ -85,7 +82,6 @@ class _OtpScreenState extends State<OtpScreen> {
       }
       return _value;
     } else {
-      // Mask phone
       if (_value.length > 4) {
         return '${_value.substring(0, 4)}${'*' * (_value.length - 4)}';
       }
@@ -109,15 +105,48 @@ class _OtpScreenState extends State<OtpScreen> {
   void _validate() async {
     if (_otp.length < 4) return;
     setState(() => _isLoading = true);
-    final api = ApiService();
-    final trackingId = await api.getTrackingId();
-    if (trackingId != null) {
-      await api.saveUserData(trackingId: trackingId, role: _role);
+    try {
+      final result = await ApiService().auth.verifyOtp(_value, _otp);
+      if (result['success'] == true) {
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.resetPassword,
+          arguments: {
+            'email': _value,
+            'resetToken': result['resetToken'],
+          },
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Code invalide')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ApiService().handleError(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pushReplacementNamed(context, AppRoutes.home);
-    }
+  }
+
+  void _resendCode() async {
+    try {
+      await ApiService().auth.forgotPassword(_value);
+      _startTimer();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Un nouveau code vous a été envoyé'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   @override
@@ -127,7 +156,6 @@ class _OtpScreenState extends State<OtpScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Back button
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Align(
@@ -147,7 +175,6 @@ class _OtpScreenState extends State<OtpScreen> {
                 ),
               ),
             ),
-
             Expanded(
               child: Center(
                 child: SingleChildScrollView(
@@ -155,7 +182,6 @@ class _OtpScreenState extends State<OtpScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Email icon
                       Container(
                         width: 80,
                         height: 80,
@@ -170,7 +196,6 @@ class _OtpScreenState extends State<OtpScreen> {
                         ),
                       ),
                       const SizedBox(height: 28),
-
                       const Text(
                         'Vérifie tes messages',
                         style: AppTextStyles.displayMedium,
@@ -182,10 +207,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         style: AppTextStyles.bodyLarge,
                         textAlign: TextAlign.center,
                       ),
-
                       const SizedBox(height: 40),
-
-                      // OTP boxes
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: List.generate(4, (index) {
@@ -243,10 +265,7 @@ class _OtpScreenState extends State<OtpScreen> {
                           );
                         }),
                       ),
-
                       const SizedBox(height: 28),
-
-                      // Timer / Resend
                       if (!_canResend)
                         Text(
                           'Renvoyer le code dans ${_secondsLeft.toString().padLeft(2, '0')}s',
@@ -254,14 +273,7 @@ class _OtpScreenState extends State<OtpScreen> {
                         )
                       else
                         GestureDetector(
-                          onTap: () {
-                            _startTimer();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Code renvoyé'), duration: Duration(seconds: 2)),
-                              );
-                            }
-                          },
+                          onTap: _resendCode,
                           child: Text(
                             'Renvoyer le code',
                             style: AppTextStyles.bodyMedium.copyWith(
@@ -271,15 +283,12 @@ class _OtpScreenState extends State<OtpScreen> {
                             ),
                           ),
                         ),
-
                       const SizedBox(height: 40),
-
                       PrimaryButton(
                         label: 'Valider',
                         isLoading: _isLoading,
                         onPressed: _otp.length == 4 ? _validate : null,
                       ),
-
                       const SizedBox(height: 32),
                       Text(
                         'ACTIV EDUCATION',

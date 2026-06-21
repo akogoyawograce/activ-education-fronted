@@ -14,12 +14,16 @@ import 'screens/auth/register_preferences_screen.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/forgot_password_screen.dart';
 import 'screens/auth/otp_screen.dart';
+import 'screens/auth/reset_password_screen.dart';
+import 'screens/auth/totp_setup_screen.dart';
+import 'screens/auth/totp_verify_screen.dart';
 
 // Home & Modules
 import 'screens/main_scaffold.dart';
 import 'screens/explorer/explorer_screen.dart';
 import 'screens/explorer/favorites_screen.dart';
 import 'screens/explorer/fiche_detail_screen.dart';
+import 'screens/explorer/etablissements_map_screen.dart';
 import 'screens/search/global_search_screen.dart';
 import 'screens/conseillers/conseillers_screen.dart';
 import 'screens/diagnostic/quiz_screen.dart';
@@ -36,6 +40,7 @@ import 'screens/messages/rdv_list_screen.dart';
 import 'screens/profile/profile_screen.dart';
 import 'screens/errors/not_found_screen.dart';
 import 'screens/errors/network_error_screen.dart';
+import 'screens/home/recommandation_ia_screen.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -69,6 +74,19 @@ class ActivEducationApp extends StatelessWidget {
         AppRoutes.login: (_) => const LoginScreen(),
         AppRoutes.forgotPassword: (_) => const ForgotPasswordScreen(),
         AppRoutes.otp: (_) => const OtpScreen(),
+        AppRoutes.resetPassword: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          return ResetPasswordScreen();
+        },
+        AppRoutes.totpSetup: (_) => const TotpSetupScreen(),
+        AppRoutes.totpVerify: (context) {
+          final args = ModalRoute.of(context)?.settings.arguments
+              as Map<String, dynamic>?;
+          final challengeToken = args?['challengeToken'] as String? ?? '';
+          final email = args?['email'] as String? ?? '';
+          return TotpVerifyScreen(challengeToken: challengeToken, email: email);
+        },
 
         // Main Navigation
         AppRoutes.home: (_) => const MainScaffold(),
@@ -130,6 +148,8 @@ class ActivEducationApp extends StatelessWidget {
         },
         AppRoutes.rdvList: (_) => const RdvListScreen(),
         AppRoutes.profile: (_) => const ProfileScreen(),
+        AppRoutes.etablissementsMap: (_) => const EtablissementsMapScreen(),
+        AppRoutes.recommandationIA: (_) => const RecommandationIAScreen(),
 
         // États
         AppRoutes.notFound: (_) => const NotFoundScreen(),

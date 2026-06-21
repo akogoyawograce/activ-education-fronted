@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import '../../theme/app_theme.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
@@ -22,14 +25,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _api = ApiService();
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  WebSocketChannel? _wsChannel;
   Timer? _pollingTimer;
-  String? _lastMessageId;
 
   List<MessageResponse> _messages = [];
   String? _userTrackingId;
+  String? _accessToken;
   bool _isLoading = true;
   bool _isSending = false;
   bool _isForeground = true;
+  bool _useWebSocket = true;
 
   static final _uuidRegex = RegExp(
     r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
@@ -58,19 +63,66 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       });
       return;
     }
-    _loadMessages(showLoading: true);
-    _startPolling();
+    _init();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    _isForeground = state == AppLifecycleState.resumed;
-    if (_isForeground) {
+  Future<void> _init() async {
+    _userTrackingId = await _api.getTrackingId();
+    _accessToken = await _api.getAccessToken();
+    if (_userTrackingId == null) return;
+    await _loadMessages(showLoading: true);
+    _connectWebSocket();
+  }
+
+  void _connectWebSocket() {
+    if (_accessToken == null || _userTrackingId == null) {
+      _useWebSocket = false;
       _startPolling();
-      _loadMessages(showLoading: false);
-    } else {
-      _pollingTimer?.cancel();
-      _pollingTimer = null;
+      return;
+    }
+    try {
+      final baseUrl = const String.fromEnvironment(
+        'API_BASE_URL',
+        defaultValue: 'http://localhost:8080',
+      );
+      final wsUrl = baseUrl
+          .replaceFirst('https://', 'wss://')
+          .replaceFirst('http://', 'ws://');
+      _wsChannel = WebSocketChannel.connect(
+        Uri.parse('$wsUrl/ws/chat?token=$_accessToken'),
+      );
+      _wsChannel!.stream.listen(
+        (data) {
+          try {
+            final json = jsonDecode(data as String) as Map<String, dynamic>;
+            if (json['type'] == 'delivered') return;
+            final msg = MessageResponse(
+              trackingId: json['messageId'] ?? '',
+              contenu: json['contenu'] ?? '',
+              expediteurTrackingId: json['expediteurTrackingId'] ?? '',
+              destinataireTrackingId: json['destinataireTrackingId'] ?? '',
+              dateEnvoi: DateTime.now(),
+            );
+            if (msg.expediteurTrackingId == widget.expediteurId ||
+                msg.expediteurTrackingId == _userTrackingId) {
+              setState(() => _messages.add(msg));
+              _scrollToBottom();
+            }
+          } catch (_) {}
+        },
+        onError: (_) {
+          _useWebSocket = false;
+          _startPolling();
+        },
+        onDone: () {
+          if (_useWebSocket) {
+            Future.delayed(const Duration(seconds: 3), _connectWebSocket);
+          }
+        },
+      );
+    } catch (_) {
+      _useWebSocket = false;
+      _startPolling();
     }
   }
 
@@ -84,11 +136,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isForeground = state == AppLifecycleState.resumed;
+    if (_isForeground) {
+      if (!_useWebSocket) _startPolling();
+      _loadMessages(showLoading: false);
+    } else {
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
+    }
+  }
+
+  @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _messageController.dispose();
     _scrollController.dispose();
     _pollingTimer?.cancel();
+    _wsChannel?.sink.close();
     super.dispose();
   }
 
@@ -105,37 +170,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       );
 
       final newLastId = messages.isNotEmpty ? messages.last.trackingId : null;
-      if (!showLoading && newLastId == _lastMessageId && messages.length == _messages.length) return;
+      if (!showLoading && _messages.isNotEmpty &&
+          newLastId == _messages.last.trackingId &&
+          messages.length == _messages.length) return;
 
       setState(() {
         _messages = messages;
-        _lastMessageId = newLastId;
         if (showLoading) _isLoading = false;
       });
 
-      // Scroll to bottom if we were already near the bottom
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          final scrollPosition = _scrollController.position.pixels;
-          final maxScroll = _scrollController.position.maxScrollExtent;
-          // If we were within 100px of the bottom, scroll to bottom after new messages
-          if (maxScroll - scrollPosition < 100) {
-            _scrollController.animateTo(
-              _scrollController.position.maxScrollExtent,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        }
-      });
+      _scrollToBottom();
     } catch (e) {
       setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${e.toString()}')),
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
         );
       }
-    }
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -150,10 +209,18 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         contenu: contenu,
         destinataireTrackingId: widget.expediteurId,
       );
-
       await _api.envoyerMessage(_userTrackingId!, request);
-
       _messageController.clear();
+
+      if (_useWebSocket && _wsChannel != null) {
+        _wsChannel!.sink.add(jsonEncode({
+          'messageId': '${DateTime.now().millisecondsSinceEpoch}',
+          'expediteurTrackingId': _userTrackingId,
+          'destinataireTrackingId': widget.expediteurId,
+          'contenu': contenu,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }));
+      }
       await _loadMessages();
     } catch (e) {
       if (mounted) {
@@ -172,7 +239,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       backgroundColor: AppColors.backgroundGrey,
       body: Column(
         children: [
-          // Header
           Container(
             color: Colors.white,
             padding: EdgeInsets.only(
@@ -197,7 +263,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Avatar
                 Container(
                   width: 40,
                   height: 40,
@@ -230,9 +295,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'En ligne',
+                        _useWebSocket ? 'En ligne' : 'Polling 15s',
                         style: AppTextStyles.caption.copyWith(
-                          color: AppColors.success,
+                          color: _useWebSocket
+                              ? AppColors.success
+                              : AppColors.textLight,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -242,8 +309,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               ],
             ),
           ),
-
-          // Messages list
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -251,8 +316,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     ? _buildEmptyState()
                     : _buildMessagesList(),
           ),
-
-          // Input
           _buildInputArea(),
         ],
       ),

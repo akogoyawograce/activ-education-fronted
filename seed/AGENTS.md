@@ -91,6 +91,42 @@ Deployed DB is empty. Run in order with JWT (admin@activeducation.tg / admin123!
 4. `seed_quiz.sh` — POST via API (RIASEC 30Q + Personnalité 5Q)
 5. `seed_universites.sh` — POST via API (117 établissements supérieurs)
 
+## Universites directory (`seed/universites/`)
+
+117 dossiers (un pour chaque établissement de `seed_universites.sh`), chacun avec un `.md`.
+
+### 14 écoles avec site web confirmé + logo
+
+| # | Établissement | Site web | Logo |
+|---|--------------|----------|------|
+| 2 | Université de Kara (UK) | https://univ-kara.tg | `logo_uk.png` |
+| 3 | Université de Lomé (UL) | https://univ-lome.tg | `LOGO-COULEUR-TRANSP.png` |
+| 14 | DEFITECH Togo | https://defitech.tg | `images.png` |
+| 29 | IAEC | https://iaectogo.com | `iaec.ico` |
+| 44 | Institut de Technologie IPNET IT | https://www.ipnetuniversity.com | `logo.png` |
+| 50 | IAI-TOGO | https://new.iai-togo.tg | `iai_togo_logo.jpeg` |
+| 80 | Lomé Business School (LBS) | https://lome-bs.com | `lom_business_school_lbs_logo.png` |
+| 83 | UCAO-UUT | https://ucao-uut.tg | `ucao_uut.ico` |
+| 84 | UST-TG | https://rusta-usttg.org | ❌ (err 521) |
+| 86 | EAMAU | https://www.eamau.org | `eamau_logo.jpg` |
+| 92 | EMARITO | https://emarito.org | `emarito_logo.png` |
+| 93 | ENA Togo | https://ena.tg | ❌ (DNS) |
+| 95 | ESAG-NDE | https://esagnde.org | `esag_nde.ico` |
+| 99 | ESIG Global Success | https://esig.tg | `esig_global_success.ico` |
+| 105 | ESGIS | https://www.esgis.org | `esgis.ico` |
+
+### Format des fichiers `.md`
+```
+# Nom Établissement
+
+https://site-web.tg site web de l'école
+https://youtu.be/xxxxx video youtube   (optionnel)
+```
+
+### Récupération des liens
+- `seed/universites/prompt_recherche_liens.md` — prompt à copier dans ChatGPT/DeepSeek pour trouver site web + YouTube des 117 écoles
+- `seed/fetch_logos.py` — script de téléchargement automatique des favicons/logos
+
 ## Testing status
 - **Backend**: 0 real tests — only Spring Boot `contextLoads()` in `ActivEducationApplicationTests.java`
 - **Flutter**: `flutter test` — 3 files (widget smoke, model serialization, API integration)

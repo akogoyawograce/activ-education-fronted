@@ -12,7 +12,18 @@ class _CacheEntry {
 
 abstract class BaseService {
   static final Dio _dio = _initDio();
-  static const _storage = FlutterSecureStorage();
+  static FlutterSecureStorage? _storage;
+  static FlutterSecureStorage? get secureStorageOrNull {
+    if (_storage == null) {
+      try {
+        _storage = const FlutterSecureStorage();
+      } catch (_) {
+        return null;
+      }
+    }
+    return _storage;
+  }
+  static final Map<String, String> _memoryStorage = {};
   static Completer<bool>? _refreshCompleter;
   static String? cachedRefreshToken;
   static final Map<String, _CacheEntry> _cache = {};
@@ -45,9 +56,33 @@ abstract class BaseService {
     return '$url?${sorted.map((e) => '${e.key}=${e.value}').join('&')}';
   }
 
+  static Future<String?> readSecure(String key) async {
+    final s = secureStorageOrNull;
+    if (s != null) {
+      try { return await s.read(key: key); } catch (_) {}
+    }
+    return _memoryStorage[key];
+  }
+
+  static Future<void> writeSecure(String key, String value) async {
+    final s = secureStorageOrNull;
+    if (s != null) {
+      try { await s.write(key: key, value: value); } catch (_) {}
+    }
+    _memoryStorage[key] = value;
+  }
+
+  static Future<void> deleteAllSecure() async {
+    final s = secureStorageOrNull;
+    if (s != null) {
+      try { await s.deleteAll(); } catch (_) {}
+    }
+    _memoryStorage.clear();
+  }
+
   static Future<String?> getRefreshToken() async {
     if (cachedRefreshToken != null) return cachedRefreshToken;
-    cachedRefreshToken = await _storage.read(key: 'refresh_token');
+    cachedRefreshToken = await readSecure('refresh_token');
     return cachedRefreshToken;
   }
 
@@ -78,14 +113,10 @@ abstract class BaseService {
 
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
-        try {
-          final token = BaseService.cachedAccessToken ??
-              await _storage.read(key: 'auth_token');
-          if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-        } catch (_) {
-          // ignore storage read errors and continue without auth header
+        final token = BaseService.cachedAccessToken ??
+            await readSecure('auth_token');
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
         }
         handler.next(options);
       },
@@ -97,22 +128,21 @@ abstract class BaseService {
           debugPrint('401 received');
           if (requestUrl.endsWith('/api/v1/auth/login') ||
               requestUrl.endsWith('/api/v1/auth/refresh')) {
-            await _storage.deleteAll();
+            await deleteAllSecure();
             return handler.next(error);
           }
 
           final refreshed = await _refreshWithLock();
           if (!refreshed) {
-            // Refresh failed — clearing tokens
-            await _storage.deleteAll();
+            await deleteAllSecure();
             BaseService.clearUserCache();
             return handler.next(error);
           }
 
           final token = BaseService.cachedAccessToken ??
-              await _storage.read(key: 'auth_token');
+              await readSecure('auth_token');
           if (token == null || token.isEmpty) {
-            await _storage.deleteAll();
+            await deleteAllSecure();
             BaseService.clearUserCache();
             return handler.next(error);
           }
@@ -176,10 +206,10 @@ abstract class BaseService {
       final newAccess = data['accessToken'] as String?;
       final newRefresh = data['refreshToken'] as String?;
       if (newAccess != null && newAccess.isNotEmpty) {
-        await _storage.write(key: 'auth_token', value: newAccess);
+        await writeSecure('auth_token', newAccess);
         cachedAccessToken = newAccess;
         if (newRefresh != null && newRefresh.isNotEmpty) {
-          await _storage.write(key: 'refresh_token', value: newRefresh);
+          await writeSecure('refresh_token', newRefresh);
           cachedRefreshToken = newRefresh;
         }
         return true;
@@ -191,7 +221,6 @@ abstract class BaseService {
   }
 
   Dio get dio => _dio;
-  FlutterSecureStorage get storage => _storage;
 
   String handleError(dynamic e) {
     if (e is DioException) {
@@ -225,19 +254,19 @@ abstract class BaseService {
 
   Future<String?> getTrackingId() async {
     if (cachedTrackingId != null) return cachedTrackingId;
-    cachedTrackingId = await _storage.read(key: 'user_tracking_id');
+    cachedTrackingId = await readSecure('user_tracking_id');
     return cachedTrackingId;
   }
 
   Future<String?> getUserRole() async {
     if (cachedUserRole != null) return cachedUserRole;
-    cachedUserRole = await _storage.read(key: 'user_role');
+    cachedUserRole = await readSecure('user_role');
     return cachedUserRole;
   }
 
   Future<String?> getAccessToken() async {
     if (cachedAccessToken != null) return cachedAccessToken;
-    cachedAccessToken = await _storage.read(key: 'auth_token');
+    cachedAccessToken = await readSecure('auth_token');
     return cachedAccessToken;
   }
 

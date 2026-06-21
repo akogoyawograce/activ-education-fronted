@@ -12,6 +12,7 @@ class AppRoutes {
   static const String login = '/login';
   static const String forgotPassword = '/forgot-password';
   static const String otp = '/otp';
+  static const String resetPassword = '/reset-password';
 
   // Main
   static const String home = '/home';
@@ -33,12 +34,18 @@ class AppRoutes {
   static const String enfantSuivi = '/enfant-suivi';
 
   static const String rdvList = '/rdv-list';
+  static const String recommandationIA = '/recommandation-ia';
 
   // Utilitaires
   static const String ficheDetail = '/fiche-detail';
   static const String favorites = '/favorites';
   static const String search = '/search';
   static const String conseillers = '/conseillers';
+  static const String etablissementsMap = '/etablissements-map';
+
+  // 2FA / TOTP
+  static const String totpSetup = '/totp-setup';
+  static const String totpVerify = '/totp-verify';
 
   // États
   static const String notFound = '/404';

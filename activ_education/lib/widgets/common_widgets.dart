@@ -246,8 +246,12 @@ class _AuthImageState extends State<AuthImage> {
     if (_tokenLoaded) return;
     if (_tokenFuture != null) return _tokenFuture;
     _tokenFuture = () async {
-      const storage = FlutterSecureStorage();
-      _cachedToken = await storage.read(key: 'auth_token');
+      try {
+        const storage = FlutterSecureStorage();
+        _cachedToken = await storage.read(key: 'auth_token');
+      } catch (_) {
+        _cachedToken = null;
+      }
       _tokenLoaded = true;
     }();
     return _tokenFuture;

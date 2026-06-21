@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
 import 'academic_service.dart';
 import 'explorer_service.dart';
@@ -191,14 +193,25 @@ class ApiService extends BaseService {
 
   Future<DocumentResponse> uploadDocument(
     String trackingId,
-    File file, {
+    PlatformFile file, {
     required String typeDocument,
     String? description,
     String? dateDocument,
   }) async {
+    final MultipartFile multipartFile;
+    if (kIsWeb) {
+      multipartFile = MultipartFile.fromBytes(
+        file.bytes!,
+        filename: file.name,
+      );
+    } else {
+      multipartFile = await MultipartFile.fromFile(
+        file.path!,
+        filename: file.name,
+      );
+    }
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(file.path,
-          filename: file.path.split('/').last),
+      'file': multipartFile,
       'typeDocument': typeDocument,
       if (description != null) 'description': description,
       if (dateDocument != null) 'dateDocument': dateDocument,

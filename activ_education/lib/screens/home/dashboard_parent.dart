@@ -5,6 +5,8 @@ import '../../services/api_service.dart';
 import '../../services/parent_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
+import '../documents/documents_screen.dart';
+import 'enfant_suivi_screen.dart';
 
 class DashboardParent extends StatefulWidget {
   const DashboardParent({super.key});
@@ -22,6 +24,8 @@ class _DashboardParentState extends State<DashboardParent> {
   int _selectedIndex = 0;
   ResultatDiagnosticResponse? _dernierResultat;
   int _messagesNonLus = 0;
+  int _documentsCount = 0;
+  List<RendezVousResponse> _upcomingRdvs = [];
 
   @override
   void initState() {
@@ -50,15 +54,23 @@ class _DashboardParentState extends State<DashboardParent> {
 
   Future<void> _loadSelectedChildData() async {
     if (_enfants.isEmpty) return;
+    final childId = _enfants[_selectedIndex].trackingId;
     _dernierResultat = null;
+    _documentsCount = 0;
+    _upcomingRdvs = [];
     try {
       final res = await _api.dio.get(
-        '/api/v1/eleves/${_enfants[_selectedIndex].trackingId}/resultats-diagnostic/dernier',
+        '/api/v1/eleves/$childId/resultats-diagnostic/dernier',
       );
       _dernierResultat = ResultatDiagnosticResponse.fromJson(res.data);
-    } catch (_) {
-      _dernierResultat = null;
-    }
+    } catch (_) {}
+    try {
+      _documentsCount = await _api.countDocuments(childId);
+    } catch (_) {}
+    try {
+      _upcomingRdvs =
+          await _api.interaction.getRDVEleveParStatut(childId, 'PLANIFIE');
+    } catch (_) {}
   }
 
   void _selectEnfant(int index) {
@@ -286,21 +298,43 @@ class _DashboardParentState extends State<DashboardParent> {
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.schedule_rounded, size: 16, color: AppColors.textLight),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  _dernierResultat != null
-                      ? 'Quiz passé $joursDepuisQuiz'
-                      : joursDepuisQuiz,
-                  style: AppTextStyles.caption,
-                  overflow: TextOverflow.ellipsis,
-                ),
+          _buildStatRow(Icons.schedule_rounded,
+              _dernierResultat != null ? 'Quiz passé $joursDepuisQuiz' : joursDepuisQuiz),
+          const SizedBox(height: 6),
+          if (_dernierResultat != null && _dernierResultat!.profilDecouvert != null)
+            _buildStatRow(Icons.explore_rounded,
+                'Profil : ${_dernierResultat!.profilDecouvert}'),
+          if (_dernierResultat != null && _dernierResultat!.scoreFinal != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                children: [
+                  const Icon(Icons.trending_up_rounded, size: 16, color: AppColors.textLight),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: _dernierResultat!.scoreFinal! / 100,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        color: AppColors.primary,
+                        minHeight: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${_dernierResultat!.scoreFinal!.toStringAsFixed(0)}%',
+                    style: const TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
           if (hasRecommandation) ...[
             const SizedBox(height: 8),
             Container(
@@ -321,8 +355,97 @@ class _DashboardParentState extends State<DashboardParent> {
             ),
           ],
           const SizedBox(height: 12),
-
+          Row(
+            children: [
+              _buildMiniStat(Icons.description_rounded, '$_documentsCount docs',
+                  AppColors.primary),
+              const SizedBox(width: 16),
+              _buildMiniStat(Icons.event_rounded,
+                  '${_upcomingRdvs.length} RDV', AppColors.accent),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton('Suivi', Icons.trending_up_rounded, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EnfantSuiviScreen(
+                          enfantTrackingId: enfant.trackingId),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildActionButton('Documents', Icons.description_rounded,
+                    () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          DocumentsScreen(trackingId: enfant.trackingId),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.textLight),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(text, style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniStat(IconData icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 14, color: color),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'Inter',
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButton(String label, IconData icon, VoidCallback onTap) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(fontSize: 12)),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        padding: const EdgeInsets.symmetric(vertical: 10),
       ),
     );
   }

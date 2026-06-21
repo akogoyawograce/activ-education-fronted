@@ -48,7 +48,7 @@ class _RdvListScreenState extends State<RdvListScreen>
       if (_userTrackingId == null) return;
 
       List<RendezVousResponse> rdvs;
-      if (_userRole == 'ELEVE') {
+      if (_userRole?.toUpperCase() == 'ELEVE') {
         rdvs = await _api.getRDVEleve(_userTrackingId!);
       } else {
         rdvs = await _api.getRDVConseiller(_userTrackingId!);
@@ -56,7 +56,7 @@ class _RdvListScreenState extends State<RdvListScreen>
 
       final otherIds = <String>{};
       for (final rdv in rdvs) {
-        final otherId = _userRole == 'ELEVE'
+        final otherId = _userRole?.toUpperCase() == 'ELEVE'
             ? rdv.conseillerTrackingId
             : rdv.eleveTrackingId;
         if (otherId.isNotEmpty) otherIds.add(otherId);
@@ -115,7 +115,7 @@ class _RdvListScreenState extends State<RdvListScreen>
   }
 
   String _otherPartyId(RendezVousResponse rdv) {
-    return _userRole == 'ELEVE'
+    return _userRole?.toUpperCase() == 'ELEVE'
         ? rdv.conseillerTrackingId
         : rdv.eleveTrackingId;
   }
@@ -479,7 +479,7 @@ class _RdvListScreenState extends State<RdvListScreen>
                   ),
                   const SizedBox(width: 8),
                 ],
-                if (_userRole == 'CONSEILLER') ...[
+                if (_userRole?.toUpperCase() == 'CONSEILLER') ...[
                   Expanded(
                     child: GestureDetector(
                       onTap: () => _showValidateConfirmation(rdv),

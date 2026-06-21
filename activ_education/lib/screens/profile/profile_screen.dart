@@ -55,12 +55,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
       final role = await _api.getUserRole();
       if (!mounted) return;
-      if (role == 'PARENT') {
+      if (role?.toUpperCase() == 'PARENT') {
         _type = _ProfileType.parent;
         final parent = await _api.auth.getParent(trackingId);
         if (!mounted) return;
         setState(() { _parent = parent; _isLoading = false; });
-      } else if (role == 'ELEVE') {
+      } else if (role?.toUpperCase() == 'ELEVE') {
         _type = _ProfileType.eleve;
         final eleve = await _api.getEleve(trackingId);
         if (!mounted) return;
@@ -594,6 +594,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadDocumentCount() async {
+    if (_type == _ProfileType.parent) return;
     try {
       final trackingId = await _api.getTrackingId();
       if (!mounted || trackingId == null) return;

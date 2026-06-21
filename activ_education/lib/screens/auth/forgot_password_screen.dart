@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
 import '../../widgets/common_widgets.dart';
@@ -28,17 +29,26 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (value.isEmpty) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
-    if (mounted) {
-      setState(() => _isLoading = false);
-      Navigator.pushNamed(
-        context,
-        AppRoutes.otp,
-        arguments: {
-          'type': _useEmail ? 'email' : 'phone',
-          'value': value,
-        },
-      );
+    try {
+      await ApiService().auth.forgotPassword(value);
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          AppRoutes.otp,
+          arguments: {
+            'type': _useEmail ? 'email' : 'phone',
+            'value': value,
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ApiService().handleError(e))),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 

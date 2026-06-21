@@ -184,6 +184,8 @@ class FicheEtablissementResponse extends FicheBase {
   final String? siteWeb;
   final String? offreFormation;
   final bool estPublic;
+  final double? latitude;
+  final double? longitude;
   final List<FicheLien> filieresProposees;
 
   FicheEtablissementResponse({
@@ -204,6 +206,8 @@ class FicheEtablissementResponse extends FicheBase {
     this.siteWeb,
     this.offreFormation,
     required this.estPublic,
+    this.latitude,
+    this.longitude,
     this.filieresProposees = const [],
   });
 
@@ -226,6 +230,8 @@ class FicheEtablissementResponse extends FicheBase {
         siteWeb: json['siteWeb'],
         offreFormation: json['offreFormation'],
         estPublic: json['estPublic'] ?? true,
+        latitude: (json['latitude'] as num?)?.toDouble(),
+        longitude: (json['longitude'] as num?)?.toDouble(),
         filieresProposees: (json['filieresProposees'] as List?)
                 ?.map((e) => FicheLien.fromJson(e as Map<String, dynamic>))
                 .toList() ??
