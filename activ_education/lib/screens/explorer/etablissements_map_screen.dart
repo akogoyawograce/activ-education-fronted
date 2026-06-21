@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_routes.dart';
+import '../../widgets/common_widgets.dart';
 
 class EtablissementsMapScreen extends StatefulWidget {
   const EtablissementsMapScreen({super.key});

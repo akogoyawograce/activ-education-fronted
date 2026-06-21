@@ -102,6 +102,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               expediteurTrackingId: json['expediteurTrackingId'] ?? '',
               destinataireTrackingId: json['destinataireTrackingId'] ?? '',
               dateEnvoi: DateTime.now(),
+              lu: json['lu'] ?? false,
             );
             if (msg.expediteurTrackingId == widget.expediteurId ||
                 msg.expediteurTrackingId == _userTrackingId) {
