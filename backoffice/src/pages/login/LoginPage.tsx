@@ -150,7 +150,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ex: superadmin@activ-education.com"
+                placeholder="ex: email@exemple.com"
                 className="w-full pl-10 pr-3 py-2.5 border border-border rounded-lg bg-white text-text-main text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 autoFocus
               />
