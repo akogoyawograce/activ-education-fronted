@@ -235,9 +235,9 @@ class ApiService extends BaseService {
   // Files
   Future<FileUploadResponse> uploadFichier(File f, String t) =>
       files.uploadFichier(f, t);
-  Future<EleveResponse> uploadPhotoProfil(String trackingId, File file) async {
+  Future<EleveResponse> uploadPhotoProfil(String trackingId, List<int> bytes, String filename) async {
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(file.path),
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
     final res =
         await dio.patch('/api/v1/eleves/$trackingId/photo', data: formData);

@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -620,7 +619,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final trackingId = await _api.getTrackingId();
     if (trackingId == null || !mounted) return;
     try {
-      final updated = await _api.uploadPhotoProfil(trackingId, File(picked.path));
+      final bytes = await picked.readAsBytes();
+      final updated = await _api.uploadPhotoProfil(trackingId, bytes, picked.name);
       setState(() {
         if (_type == _ProfileType.eleve) {
           _eleve = updated;
