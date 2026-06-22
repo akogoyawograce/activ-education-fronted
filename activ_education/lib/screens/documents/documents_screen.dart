@@ -302,11 +302,14 @@ class _DocumentsScreenState extends State<DocumentsScreen> {
                               Row(
                                 children: [
                                   if (doc.typeDocumentLabel.isNotEmpty) ...[
-                                    Text(doc.typeDocumentLabel,
-                                        style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.primary,
-                                            fontWeight: FontWeight.w500)),
+                                    Flexible(
+                                      child: Text(doc.typeDocumentLabel,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                              fontSize: 12,
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w500)),
+                                    ),
                                     const SizedBox(width: 8),
                                   ],
                                   if (doc.tailleFormatted.isNotEmpty)

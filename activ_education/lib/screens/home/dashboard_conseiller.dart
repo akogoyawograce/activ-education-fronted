@@ -162,10 +162,13 @@ class _DashboardConseillerState extends State<DashboardConseiller> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      'Conseiller orientation | En ligne',
-                      style: AppTextStyles.bodyMedium
-                          .copyWith(color: Colors.white70),
+                    Flexible(
+                      child: Text(
+                        'Conseiller orientation | En ligne',
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: Colors.white70),
+                      ),
                     ),
                   ],
                 ),
@@ -297,8 +300,11 @@ class _DashboardConseillerState extends State<DashboardConseiller> {
           const Icon(Icons.toggle_on_outlined,
               color: AppColors.primary, size: 24),
           const SizedBox(width: 12),
-          Text('Disponibilité',
-              style: AppTextStyles.label.copyWith(fontSize: 15)),
+          Flexible(
+            child: Text('Disponibilité',
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.label.copyWith(fontSize: 15)),
+          ),
           const Spacer(),
           Switch(
             value: _isAvailable,

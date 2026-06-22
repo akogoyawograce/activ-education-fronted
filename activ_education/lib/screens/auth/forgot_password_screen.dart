@@ -197,14 +197,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 onTap: () => Navigator.pop(context),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.chevron_left_rounded,
                         color: AppColors.primary, size: 18),
-                    Text(
-                      'Retour à la connexion',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
+                    Flexible(
+                      child: Text(
+                        'Retour à la connexion',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],

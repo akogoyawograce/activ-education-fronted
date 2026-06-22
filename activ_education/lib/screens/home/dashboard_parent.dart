@@ -210,16 +210,18 @@ class _DashboardParentState extends State<DashboardParent> {
               color: isSelected ? AppColors.primary : Colors.white,
             ),
             const SizedBox(width: 6),
-            Text(
-              '${enfant.prenom} · ${enfant.niveauEtude ?? ""}',
-              style: TextStyle(
-                fontFamily: 'Inter',
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? AppColors.primary : Colors.white,
+            Flexible(
+              child: Text(
+                '${enfant.prenom} · ${enfant.niveauEtude ?? ""}',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? AppColors.primary : Colors.white,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
           ],
         ),

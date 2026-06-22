@@ -461,15 +461,18 @@ class _RdvScreenState extends State<RdvScreen>
                           size: 20,
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          _selectedDate != null
-                              ? DateFormat('EEEE dd MMMM yyyy', 'fr_FR')
-                                  .format(_selectedDate!)
-                              : 'Sélectionner une date',
-                          style: AppTextStyles.bodyLarge.copyWith(
-                            color: _selectedDate != null
-                                ? AppColors.textDark
-                                : AppColors.textLight,
+                        Flexible(
+                          child: Text(
+                            _selectedDate != null
+                                ? DateFormat('EEEE dd MMMM yyyy', 'fr_FR')
+                                    .format(_selectedDate!)
+                                : 'Sélectionner une date',
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodyLarge.copyWith(
+                              color: _selectedDate != null
+                                  ? AppColors.textDark
+                                  : AppColors.textLight,
+                            ),
                           ),
                         ),
                         const Spacer(),

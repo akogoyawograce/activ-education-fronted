@@ -170,7 +170,11 @@ class _EnfantSuiviScreenState extends State<EnfantSuiviScreen> {
               const Text('Moyenne : ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textDark)),
               Text(_moyenne.toStringAsFixed(2), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
               const Spacer(),
-              Text('${_notes.length} matière(s)', style: const TextStyle(fontSize: 13, color: AppColors.textLight)),
+              Flexible(
+                child: Text('${_notes.length} matière(s)',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textLight)),
+              ),
             ],
           ),
           const Divider(height: 24),

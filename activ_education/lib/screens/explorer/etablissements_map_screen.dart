@@ -100,8 +100,11 @@ class _EtablissementsMapScreenState extends State<EtablissementsMapScreen> {
                   const Icon(Icons.location_on_outlined,
                       size: 16, color: AppColors.textLight),
                   const SizedBox(width: 4),
-                  Text(etablissement.ville!,
-                      style: AppTextStyles.bodyMedium),
+                  Flexible(
+                    child: Text(etablissement.ville!,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodyMedium),
+                  ),
                 ],
               ),
             if (etablissement.adresse != null) ...[

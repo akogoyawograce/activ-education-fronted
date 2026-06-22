@@ -385,8 +385,11 @@ class _ExplorerScreenState extends State<ExplorerScreen>
             padding: const EdgeInsets.only(bottom: 16),
             child: Row(
               children: [
-                const Text('Fiches d\'orientation',
-                    style: AppTextStyles.headingMedium),
+                const Flexible(
+                  child: Text('Fiches d\'orientation',
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.headingMedium),
+                ),
                 const Spacer(),
                 GestureDetector(
                   onTap: _showAllCategories,

@@ -399,17 +399,23 @@ class _DiagnosticEnfantScreenState extends State<DiagnosticEnfantScreen> {
               const Icon(Icons.calendar_today_rounded,
                   size: 14, color: Colors.white70),
               const SizedBox(width: 6),
-              Text(dateStr,
-                  style: const TextStyle(
-                      fontSize: 13, color: Colors.white70)),
+              Flexible(
+                child: Text(dateStr,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 13, color: Colors.white70)),
+              ),
               if (r.scoreFinal != null) ...[
                 const SizedBox(width: 16),
                 const Icon(Icons.star_rounded,
                     size: 14, color: Colors.white70),
                 const SizedBox(width: 6),
-                Text('Score : ${r.scoreFinal!.toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                        fontSize: 13, color: Colors.white70)),
+                Flexible(
+                  child: Text('Score : ${r.scoreFinal!.toStringAsFixed(1)}%',
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 13, color: Colors.white70)),
+                ),
               ],
             ],
           ),
@@ -431,8 +437,11 @@ class _DiagnosticEnfantScreenState extends State<DiagnosticEnfantScreen> {
               const Icon(Icons.radar_rounded,
                   size: 20, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text('Profil multidimensionnel',
-                  style: AppTextStyles.headingSmall),
+              Flexible(
+                child: Text('Profil multidimensionnel',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.headingSmall),
+              ),
             ],
           ),
         ),
@@ -598,11 +607,14 @@ class _DiagnosticEnfantScreenState extends State<DiagnosticEnfantScreen> {
               children: [
                 Row(
                   children: [
-                    Text(rec.title,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textDark)),
+                    Flexible(
+                      child: Text(rec.title,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textDark)),
+                    ),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -665,8 +677,11 @@ class _DiagnosticEnfantScreenState extends State<DiagnosticEnfantScreen> {
               const Icon(Icons.history_rounded,
                   size: 20, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text('Ce que $prenom a exploré',
-                  style: AppTextStyles.headingSmall),
+              Flexible(
+                child: Text('Ce que $prenom a exploré',
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.headingSmall),
+              ),
             ],
           ),
         ),

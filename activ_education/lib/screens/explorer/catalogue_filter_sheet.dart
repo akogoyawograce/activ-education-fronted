@@ -176,8 +176,10 @@ class _CatalogueFilterSheetState extends State<CatalogueFilterSheet> {
                   activeColor: AppColors.primary,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                 ),
-                Text('Établissements publics uniquement',
-                    style: AppTextStyles.bodyMedium),
+                Flexible(
+                  child: Text('Établissements publics uniquement',
+                      style: AppTextStyles.bodyMedium),
+                ),
               ],
             ),
             const SizedBox(height: 24),

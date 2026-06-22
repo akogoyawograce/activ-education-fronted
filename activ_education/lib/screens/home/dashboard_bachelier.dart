@@ -595,14 +595,18 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Profil: ${_completionPercentage.toInt()}% complété',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textMedium,
+              Flexible(
+                child: Text(
+                  'Profil: ${_completionPercentage.toInt()}% complété',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textMedium,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               const Text(
                 'Action requise',
                 style: TextStyle(
@@ -638,15 +642,18 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  'Commencer le diagnostic',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
+                Flexible(
+                  child: Text(
+                    'Commencer le diagnostic',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 SizedBox(width: 8),
-                const Icon(Icons.arrow_forward_rounded, size: 20),
+                Icon(Icons.arrow_forward_rounded, size: 20),
               ],
             ),
           ),

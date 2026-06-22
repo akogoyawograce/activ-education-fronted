@@ -165,41 +165,52 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
             if (_passwordController.text.isNotEmpty &&
                 _confirmController.text.isNotEmpty)
-              Row(
+              Wrap(
+                spacing: 16,
+                runSpacing: 4,
                 children: [
-                  Icon(
-                    _passwordController.text.length >= 8
-                        ? Icons.check_circle
-                        : Icons.cancel,
-                    size: 16,
-                    color: _passwordController.text.length >= 8
-                        ? AppColors.success
-                        : AppColors.error,
-                  ),
-                  const SizedBox(width: 6),
-                  Text('Au moins 8 caractères',
-                      style: AppTextStyles.caption.copyWith(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _passwordController.text.length >= 8
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                        size: 16,
                         color: _passwordController.text.length >= 8
                             ? AppColors.success
                             : AppColors.error,
-                      )),
-                  const SizedBox(width: 16),
-                  Icon(
-                    _passwordController.text == _confirmController.text
-                        ? Icons.check_circle
-                        : Icons.cancel,
-                    size: 16,
-                    color: _passwordController.text == _confirmController.text
-                        ? AppColors.success
-                        : AppColors.error,
+                      ),
+                      const SizedBox(width: 6),
+                      Text('Au moins 8 caractères',
+                          style: AppTextStyles.caption.copyWith(
+                            color: _passwordController.text.length >= 8
+                                ? AppColors.success
+                                : AppColors.error,
+                          )),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text('Les mots de passe correspondent',
-                      style: AppTextStyles.caption.copyWith(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _passwordController.text == _confirmController.text
+                            ? Icons.check_circle
+                            : Icons.cancel,
+                        size: 16,
                         color: _passwordController.text == _confirmController.text
                             ? AppColors.success
                             : AppColors.error,
-                      )),
+                      ),
+                      const SizedBox(width: 6),
+                      Text('Les mots de passe correspondent',
+                          style: AppTextStyles.caption.copyWith(
+                            color: _passwordController.text == _confirmController.text
+                                ? AppColors.success
+                                : AppColors.error,
+                          )),
+                    ],
+                  ),
                 ],
               ),
 

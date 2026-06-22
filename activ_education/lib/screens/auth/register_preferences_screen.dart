@@ -55,11 +55,13 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
-            SizedBox(width: 10),
-            Text('Inscription réussie !', style: AppTextStyles.headingMedium),
+            const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 28),
+            const SizedBox(width: 10),
+            Flexible(
+              child: Text('Inscription réussie !', style: AppTextStyles.headingMedium),
+            ),
           ],
         ),
         content: const Column(
@@ -304,8 +306,10 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
                     // Matières
                     Row(
                       children: [
-                        const Text('Tes matières préférées',
-                            style: AppTextStyles.headingMedium),
+                        Flexible(
+                          child: Text('Tes matières préférées',
+                              style: AppTextStyles.headingMedium),
+                        ),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
