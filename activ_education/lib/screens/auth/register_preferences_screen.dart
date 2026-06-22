@@ -177,6 +177,8 @@ class _RegisterPreferencesScreenState extends State<RegisterPreferencesScreen> {
           typeApprenant = TypeApprenant.ETUDIANT;
         } else if (userRole == UserRole.reconversion) {
           typeApprenant = TypeApprenant.PROFESSIONNEL;
+        } else if (userRole == UserRole.decrocheur) {
+          typeApprenant = TypeApprenant.AUTRE;
         }
 
         final request = EleveRequest(

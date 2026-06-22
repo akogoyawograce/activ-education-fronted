@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import '../widgets/bottom_nav.dart';
 import 'home/dashboard_bachelier.dart';
 import 'home/dashboard_reconversion.dart';
+import 'home/dashboard_decrocheur.dart';
 import 'home/dashboard_parent.dart';
 import 'home/dashboard_conseiller.dart';
 import 'explorer/explorer_screen.dart';
@@ -92,10 +93,15 @@ class _MainScaffoldState extends State<MainScaffold> {
         return const DashboardConseiller();
       case 'PARENT':
         return const DashboardParent();
-      case 'RECONVERSION':
-        return const DashboardReconversion();
       default:
-        return DashboardBachelier(typeApprenant: _typeApprenant);
+        switch (_typeApprenant?.toUpperCase()) {
+          case 'PROFESSIONNEL':
+            return const DashboardReconversion();
+          case 'AUTRE':
+            return const DashboardDecrocheur();
+          default:
+            return DashboardBachelier(typeApprenant: _typeApprenant);
+        }
     }
   }
 

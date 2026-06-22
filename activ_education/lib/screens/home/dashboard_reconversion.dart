@@ -70,6 +70,16 @@ class _DashboardReconversionState extends State<DashboardReconversion> {
                       const SizedBox(height: 24),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildFinancementsSection(),
+                      ),
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: _buildBilanCompetences(),
+                      ),
+                      const SizedBox(height: 24),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: _buildConseillersCta(),
                       ),
                       const SizedBox(height: 24),
@@ -424,6 +434,120 @@ class _DashboardReconversionState extends State<DashboardReconversion> {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinancementsSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F5E9),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.euro_rounded, color: Color(0xFF2E7D32), size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text('Financements et droits',
+                    style: AppTextStyles.label.copyWith(fontSize: 16, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildFinancementTile(
+            icon: Icons.account_balance_rounded,
+            title: 'Compte Personnel de Formation (CPF)',
+            subtitle: 'Utilisez vos droits CPF pour financer votre formation',
+          ),
+          const Divider(height: 1),
+          _buildFinancementTile(
+            icon: Icons.work_outline_rounded,
+            title: 'Formation continue',
+            subtitle: 'Dispositifs pour adultes : Pro-A, VAE, congé formation',
+          ),
+          const Divider(height: 1),
+          _buildFinancementTile(
+            icon: Icons.assessment_rounded,
+            title: 'Bilan de compétences',
+            subtitle: 'Faites le point sur vos compétences et construisez votre projet',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFinancementTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon, color: AppColors.primary, size: 22),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+      subtitle: Text(subtitle, style: AppTextStyles.caption),
+      trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
+      onTap: () {},
+    );
+  }
+
+  Widget _buildBilanCompetences() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.quiz),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [const Color(0xFFE3F2FD), const Color(0xFFBBDEFB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Bilan de compétences',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Un questionnaire préliminaire pour préparer votre échange avec un conseiller',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textMedium),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: 200,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pushNamed(context, AppRoutes.quiz),
+                      child: const Text('Commencer', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.psychology_rounded, size: 48, color: AppColors.primary),
           ],
         ),
       ),
