@@ -6,6 +6,7 @@ export interface KPIs {
   totalQuiz: number
   totalResultats: number
   totalEtablissements: number
+  totalFiches: number
 }
 
 export interface DateCount {
@@ -40,5 +41,27 @@ export async function getRDV(mois = 12): Promise<RDVCount[]> {
 
 export async function getQuizParDomaine(): Promise<Record<string, number>> {
   const response = await api.get<Record<string, number>>('/admin/stats/quiz-par-domaine')
+  return response.data
+}
+
+export interface TypeApprenantCount {
+  [typeApprenant: string]: number
+}
+
+export interface FicheRecente {
+  titre: string
+  type: string
+  trackingId: string
+  modifieeLe: string
+  estPublie: boolean
+}
+
+export async function getTypeApprenant(): Promise<TypeApprenantCount> {
+  const response = await api.get<TypeApprenantCount>('/admin/stats/type-apprenant')
+  return response.data
+}
+
+export async function getFichesRecentes(limite = 10): Promise<FicheRecente[]> {
+  const response = await api.get<FicheRecente[]>('/admin/stats/fiches', { params: { limite } })
   return response.data
 }

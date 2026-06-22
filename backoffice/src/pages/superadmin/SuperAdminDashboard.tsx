@@ -7,14 +7,8 @@ import StatusBadge from '@/components/ui/StatusBadge'
 import Modal from '@/components/ui/Modal'
 import { SkeletonCard } from '@/components/ui/Skeleton'
 import * as administrateurService from '@/api/administrateurs'
+import * as statsService from '@/api/stats'
 import type { AdministrateurResponse, AdministrateurRequest } from '@/types'
-
-const KPI_ITEMS = [
-  { title: 'Total Administrateurs', value: 12, trend: 8, trendLabel: 'ce mois', icon: Users, color: 'primary' as const },
-  { title: 'Rôles Configurés', value: 3, icon: Shield, color: 'success' as const },
-  { title: 'Quiz publiés', value: 24, trend: 12, trendLabel: 'ce trimestre', icon: BookOpen, color: 'secondary' as const },
-  { title: 'Messages non lus', value: 7, trend: -15, trendLabel: 'vs hier', icon: MessageSquare, color: 'danger' as const },
-]
 
 function AdminForm({
   data,
@@ -131,6 +125,11 @@ export default function SuperAdminDashboard() {
   const [editAdmin, setEditAdmin] = useState<AdministrateurResponse | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdministrateurResponse | null>(null)
 
+  const { data: kpi } = useQuery({
+    queryKey: ['superadmin', 'kpi'],
+    queryFn: () => statsService.getKPIs(),
+  })
+
   const { data: adminsPage, isLoading } = useQuery({
     queryKey: ['administrateurs', 0],
     queryFn: () => administrateurService.getAll(0, 100),
@@ -223,7 +222,12 @@ export default function SuperAdminDashboard() {
         <p className="text-sm text-text-secondary mt-0.5">Vue d&apos;ensemble de la plateforme</p>
       </div>
 
-      <KpiCardGrid items={KPI_ITEMS} />
+      <KpiCardGrid items={[
+        { title: 'Total Élèves', value: kpi?.totalEleves ?? 0, icon: Users, color: 'primary' as const },
+        { title: 'Conseillers', value: kpi?.totalConseillers ?? 0, icon: Shield, color: 'success' as const },
+        { title: 'Quiz', value: kpi?.totalQuiz ?? 0, icon: BookOpen, color: 'secondary' as const },
+        { title: 'Fiches', value: kpi?.totalFiches ?? 0, icon: MessageSquare, color: 'danger' as const },
+      ]} />
 
       <div className="bg-card rounded-[12px] border border-border p-6">
         <div className="flex items-center justify-between mb-4">
