@@ -614,13 +614,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _uploadPhoto() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024);
-    if (picked == null) return;
+    XFile? pickedFile;
+    try {
+      pickedFile = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur: $e')),
+        );
+      }
+      return;
+    }
+    if (pickedFile == null) return;
     final trackingId = await _api.getTrackingId();
     if (trackingId == null || !mounted) return;
     try {
-      final bytes = await picked.readAsBytes();
-      final updated = await _api.uploadPhotoProfil(trackingId, bytes, picked.name);
+      final bytes = await pickedFile.readAsBytes();
+      final updated = await _api.uploadPhotoProfil(trackingId, bytes, pickedFile.name);
       setState(() {
         if (_type == _ProfileType.eleve) {
           _eleve = updated;

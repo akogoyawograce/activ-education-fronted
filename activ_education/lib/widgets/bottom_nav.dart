@@ -41,7 +41,9 @@ class AppBottomNav extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(tabs.length, (i) {
               final tab = tabs[i];
@@ -54,6 +56,7 @@ class AppBottomNav extends StatelessWidget {
               );
             }),
           ),
+            ),
         ),
       ),
     );
