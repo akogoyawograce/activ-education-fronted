@@ -1,13 +1,24 @@
 import { useState } from 'react'
-import { Shield, Server, Database, HardDrive, HelpCircle, ExternalLink, Check, X, AlertTriangle, Save, Settings, Wrench, Activity } from 'lucide-react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Shield, Server, Database, HardDrive, HelpCircle, ExternalLink, Check, X, AlertTriangle, Save, Settings, Wrench, Activity, Sliders } from 'lucide-react'
+import api from '@/api/client'
 
-type TabId = 'roles' | 'maintenance' | 'integrite'
+type TabId = 'roles' | 'maintenance' | 'integrite' | 'poids-quiz'
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: 'roles', label: 'Gestion des rôles', icon: Settings },
   { id: 'maintenance', label: 'Mode Maintenance', icon: Wrench },
+  { id: 'poids-quiz', label: 'Poids des quiz', icon: Sliders },
   { id: 'integrite', label: 'Intégrité Système', icon: Activity },
 ]
+
+interface Parametre {
+  id: number
+  cle: string
+  valeur: string
+  description: string
+  categorie: string
+}
 
 interface RoleRow {
   role: string
@@ -214,6 +225,84 @@ function IntegriteTab() {
   )
 }
 
+function PoidsQuizTab() {
+  const queryClient = useQueryClient()
+  const { data: parametres, isLoading } = useQuery({
+    queryKey: ['parametres', 'RECOMMENDATION'],
+    queryFn: async () => {
+      const res = await api.get<Parametre[]>('/admin/parametres')
+      return res.data.filter((p: Parametre) => p.categorie === 'RECOMMENDATION')
+    },
+  })
+
+  const [edits, setEdits] = useState<Record<string, string>>({})
+
+  const saveMutation = useMutation({
+    mutationFn: async ({ cle, valeur }: { cle: string; valeur: string }) => {
+      await api.put(`/admin/parametres/${cle}`, { valeur })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['parametres'] })
+    },
+  })
+
+  const handleSave = (cle: string) => {
+    const valeur = edits[cle]
+    if (valeur !== undefined) {
+      saveMutation.mutate({ cle, valeur })
+    }
+  }
+
+  if (isLoading) {
+    return <div className="text-sm text-text-secondary">Chargement...</div>
+  }
+
+  return (
+    <div>
+      <h3 className="text-lg font-semibold text-text-main mb-4">Poids des quiz et recommandations</h3>
+      <p className="text-sm text-text-secondary mb-6">
+        Configurez les coefficients utilisés pour le calcul des recommandations d&apos;orientation.
+      </p>
+
+      <div className="space-y-4">
+        {(parametres ?? []).map((param) => (
+          <div key={param.cle} className="bg-card rounded-[12px] border border-border p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <label className="block text-sm font-medium text-text-main mb-1">
+                  {param.cle.split('.').pop()?.replace(/_/g, ' ')}
+                </label>
+                <p className="text-xs text-text-secondary mb-2">{param.description}</p>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={edits[param.cle] ?? param.valeur}
+                    onChange={(e) => setEdits({ ...edits, [param.cle]: e.target.value })}
+                    className="w-24 rounded-[12px] border border-border bg-white px-3 py-2 text-sm text-text-main focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  />
+                  <span className="text-sm text-text-secondary">{(param.cle.includes('seuil') || param.cle.includes('poids')) ? (param.cle.includes('poids') ? '%' : '') : ''}</span>
+                  {edits[param.cle] !== undefined && edits[param.cle] !== param.valeur && (
+                    <button
+                      onClick={() => handleSave(param.cle)}
+                      disabled={saveMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-white rounded-[12px] hover:bg-primary-dark transition-colors text-sm font-medium disabled:opacity-50"
+                    >
+                      <Save className="size-4" />
+                      Enregistrer
+                    </button>
+                  )}
+                </div>
+              </div>
+              <span className="text-xs text-text-secondary font-mono shrink-0">{param.cle}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function HelpCard() {
   const [showGuide, setShowGuide] = useState(false)
   return (
@@ -293,6 +382,7 @@ export default function ParametresPage() {
           <div className="bg-card rounded-[12px] border border-border p-6">
             {activeTab === 'roles' && <RoleTab />}
             {activeTab === 'maintenance' && <MaintenanceTab />}
+            {activeTab === 'poids-quiz' && <PoidsQuizTab />}
             {activeTab === 'integrite' && <IntegriteTab />}
           </div>
         </div>

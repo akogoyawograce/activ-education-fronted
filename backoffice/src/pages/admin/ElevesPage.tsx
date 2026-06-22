@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, UserPlus, Pencil } from 'lucide-react'
+import { Search, UserPlus, Pencil, Download, Upload } from 'lucide-react'
 import * as eleveService from '@/api/eleves'
 import type { EleveResponse } from '@/types'
 import DataTable from '@/components/ui/DataTable'
@@ -147,13 +147,46 @@ export default function ElevesPage() {
         title="Gestion des étudiants"
         description={`${data?.totalElements ?? 0} élèves inscrits`}
         actions={
-          <button
-            onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            <UserPlus className="size-4" />
-            Nouvel élève
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href={`${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1'}/admin/export/eleves`}
+              className="flex items-center gap-2 border border-border hover:bg-gray-50 text-text-secondary text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <Download className="size-4" />
+              Export CSV
+            </a>
+            <label className="flex items-center gap-2 border border-border hover:bg-gray-50 text-text-secondary text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer">
+              <Upload className="size-4" />
+              Import CSV
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const formData = new FormData()
+                  formData.append('file', file)
+                  try {
+                    const base = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080/api/v1')
+                    const res = await fetch(`${base}/admin/import/eleves`, { method: 'POST', body: formData })
+                    const result = await res.json()
+                    alert(`Importé: ${result.imported} / ${result.total} élèves`)
+                    queryClient.invalidateQueries({ queryKey: ['eleves'] })
+                  } catch (err) {
+                    alert('Erreur import: ' + err)
+                  }
+                }}
+              />
+            </label>
+            <button
+              onClick={() => setShowCreate(true)}
+              className="flex items-center gap-2 bg-primary hover:bg-primary-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            >
+              <UserPlus className="size-4" />
+              Nouvel élève
+            </button>
+          </div>
         }
       />
 
