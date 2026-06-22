@@ -10,9 +10,16 @@ import '../explorer/fiche_detail_screen.dart';
 class ResultatsScreen extends StatefulWidget {
   final double? score;
   final String? quizId;
-  final String? profil; // Profil RIASEC calculé
+  final String? profil;
+  final String? iaRecommandation;
 
-  const ResultatsScreen({super.key, this.score, this.quizId, this.profil});
+  const ResultatsScreen({
+    super.key,
+    this.score,
+    this.quizId,
+    this.profil,
+    this.iaRecommandation,
+  });
 
   @override
   State<ResultatsScreen> createState() => _ResultatsScreenState();
@@ -25,6 +32,7 @@ class _ResultatsScreenState extends State<ResultatsScreen>
   ResultatDiagnosticResponse? _resultat;
   List<FicheFiliereResponse> _recommandations = [];
   bool _isLoading = true;
+  String? _iaRecommandation;
 
   late AnimationController _animController;
   late Animation<double> _scaleAnim;
@@ -34,6 +42,7 @@ class _ResultatsScreenState extends State<ResultatsScreen>
   void initState() {
     super.initState();
     _initAnimations();
+    _iaRecommandation = widget.iaRecommandation;
     _loadResultats();
   }
 
@@ -77,7 +86,6 @@ class _ResultatsScreenState extends State<ResultatsScreen>
         List<FicheFiliereResponse> filtrees;
 
         if (profil.contains('Réaliste') || profil.contains('Investigateur')) {
-          // Profils techniques/scientifiques
           filtrees = toutesFilieres
               .where((f) =>
                   f.domaine?.toLowerCase().contains('informatique') == true ||
@@ -118,7 +126,6 @@ class _ResultatsScreenState extends State<ResultatsScreen>
           filtrees = toutesFilieres;
         }
 
-        // Si pas de résultats filtrés, prendre les premières filières
         if (filtrees.isEmpty) filtrees = toutesFilieres;
 
         setState(() {
@@ -215,6 +222,50 @@ class _ResultatsScreenState extends State<ResultatsScreen>
                     ),
                   ),
 
+                  // Recommandation IA
+                  if (_iaRecommandation != null)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppColors.primary, AppColors.primaryDark],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Recommandation personnalisée',
+                                    style: AppTextStyles.headingMedium.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _iaRecommandation!,
+                                style: AppTextStyles.bodyLarge.copyWith(
+                                  color: Colors.white,
+                                  height: 1.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
                   // Titre des recommandations
                   const SliverToBoxAdapter(
                     child: Padding(
@@ -238,11 +289,8 @@ class _ResultatsScreenState extends State<ResultatsScreen>
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
                                 final filiere = _recommandations[index];
-                                final matchScore =
-                                    (95 - (index * 8)).clamp(65, 95);
                                 return _RecommandationCard(
                                   filiere: filiere,
-                                  matchScore: matchScore,
                                 );
                               },
                               childCount: _recommandations.length,
@@ -401,11 +449,9 @@ class _ResultatsScreenState extends State<ResultatsScreen>
 
 class _RecommandationCard extends StatelessWidget {
   final FicheFiliereResponse filiere;
-  final int matchScore;
 
   const _RecommandationCard({
     required this.filiere,
-    required this.matchScore,
   });
 
   @override
@@ -437,34 +483,12 @@ class _RecommandationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    filiere.titre,
-                    style: AppTextStyles.label.copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '$matchScore% match',
-                    style: AppTextStyles.caption.copyWith(
-                      color: AppColors.accent,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              filiere.titre,
+              style: AppTextStyles.label.copyWith(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             if (filiere.domaine != null && filiere.domaine!.isNotEmpty) ...[
               const SizedBox(height: 6),

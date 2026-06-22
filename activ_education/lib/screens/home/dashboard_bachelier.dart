@@ -6,8 +6,6 @@ import '../../theme/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../models/models.dart';
 import '../../widgets/skeleton_widget.dart';
-import '../../services/recommendation_service.dart';
-import '../../widgets/recommendations_section.dart';
 import '../../utils/profile_completion.dart';
 import '../../utils/image_utils.dart';
 
@@ -31,8 +29,7 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
   ResultatDiagnosticResponse? _dernierResultat;
   EleveResponse? _userProfile;
   double _completionPercentage = 30; // Par défaut 30%
-  final _recommendationService = RecommendationService();
-  List<RecommendationResult> _recommendations = [];
+  String? _iaRecommandation;
 
   bool _isLoading = true;
 
@@ -119,11 +116,12 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
           }
         }).catchError((_) {}),
       ]);
-      _recommendations = _recommendationService.generate(
-        profilDecouvert: _dernierResultat?.profilDecouvert,
-        recommandation: _dernierResultat?.recommandation,
-        notes: _recentNotes,
-      );
+      try {
+        final iaRes = await _api.getRecommandationIA(_userTrackingId!);
+        _iaRecommandation = iaRes;
+      } catch (_) {
+        _iaRecommandation = _dernierResultat?.recommandation;
+      }
       _completionPercentage = _calculateCompletion();
       if (mounted) setState(() {});
     } catch (e) {
@@ -168,9 +166,9 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
 
                       const SizedBox(height: 32),
 
-                      // Recommandations personnalisées (Quiz × Notes)
-                      if (_recommendations.isNotEmpty) ...[
-                        RecommendationsSection(recommendations: _recommendations),
+                      // Recommandation personnalisée IA
+                      if (_iaRecommandation != null) ...[
+                        _buildIaRecommandation(),
                         const SizedBox(height: 24),
                       ],
 
@@ -719,6 +717,66 @@ class _DashboardBachelierState extends State<DashboardBachelier> with RouteAware
           ],
         ),
       ],
+    );
+  }
+
+  Widget _buildIaRecommandation() {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, AppRoutes.recommandationIA),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [AppColors.primary, AppColors.primaryDark],
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ma recommandation',
+                        style: AppTextStyles.label.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _iaRecommandation!.length > 120
+                        ? '${_iaRecommandation!.substring(0, 120)}...'
+                        : _iaRecommandation!,
+                    style: AppTextStyles.bodyMedium.copyWith(
+                      color: Colors.white70,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Voir la recommandation complète →',
+                    style: AppTextStyles.caption.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

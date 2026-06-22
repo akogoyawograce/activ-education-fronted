@@ -185,6 +185,7 @@ class _QuizScreenState extends State<QuizScreen>
       }
       final profil = _determinerProfil(scoreFinal);
       final eleveId = await _api.getTrackingId();
+      String? iaRecommandation;
       if (eleveId != null && _quiz != null) {
         await _api.enregistrerResultat(ResultatDiagnosticRequest(
           eleveTrackingId: eleveId,
@@ -193,6 +194,7 @@ class _QuizScreenState extends State<QuizScreen>
           profilDecouvert: profil,
           recommandation: _getRecommandation(profil),
         ));
+        iaRecommandation = await _api.getRecommandationIA(eleveId);
       }
       setState(() => _isSaving = false);
       if (mounted) {
@@ -204,6 +206,7 @@ class _QuizScreenState extends State<QuizScreen>
             'profil': profil,
             'quizId': _quiz?.trackingId,
             'eleveId': eleveId,
+            'iaRecommandation': iaRecommandation,
           },
         );
       }

@@ -123,6 +123,14 @@ class ApiService extends BaseService {
   Future<List<QuestionResponse>> recommanderQuestions(String eId, String qId,
           {int nombre = 20}) =>
       diagnostic.recommanderQuestions(eId, qId, nombre: nombre);
+  Future<String?> getRecommandationIA(String eleveTrackingId) async {
+    try {
+      final res = await dio.get('/api/v1/eleves/$eleveTrackingId/recommandation-ia');
+      return res.data['recommandation'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
   // Interaction
   Future<MessageResponse> envoyerMessage(
       String expId, MessageRequest req) async {
