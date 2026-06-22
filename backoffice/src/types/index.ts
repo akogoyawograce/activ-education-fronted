@@ -292,6 +292,8 @@ export interface FAQResponse {
   categorie: string
   estPublie: boolean
   nbVues: number
+  nbUtile: number
+  nbPasUtile: number
   createdAt: string
   updatedAt: string
 }

@@ -271,6 +271,8 @@ class EntreeFAQResponse {
   final String? categorie;
   final bool estPublie;
   final int nbVues;
+  final int nbUtile;
+  final int nbPasUtile;
 
   EntreeFAQResponse({
     required this.trackingId,
@@ -279,6 +281,8 @@ class EntreeFAQResponse {
     this.categorie,
     required this.estPublie,
     required this.nbVues,
+    this.nbUtile = 0,
+    this.nbPasUtile = 0,
   });
 
   factory EntreeFAQResponse.fromJson(Map<String, dynamic> json) =>
@@ -289,5 +293,7 @@ class EntreeFAQResponse {
         categorie: json['categorie'],
         estPublie: json['estPublie'] ?? false,
         nbVues: json['nbVues'] ?? 0,
+        nbUtile: json['nbUtile'] ?? 0,
+        nbPasUtile: json['nbPasUtile'] ?? 0,
       );
 }

@@ -57,6 +57,12 @@ class ExplorerService extends BaseService {
     return List<String>.from(res.data);
   }
 
+  Future<EntreeFAQResponse> voterFAQ(String trackingId, bool utile) async {
+    final res = await dio.post('/api/v1/bibliotheque/faq/$trackingId/voter',
+        queryParameters: {'utile': utile});
+    return EntreeFAQResponse.fromJson(res.data);
+  }
+
   // Recherche
   Future<List<RechercheGlobaleResponse>> rechercherGlobalement(String phrase, {int limite = 10}) async {
     final res = await dioGet('/api/v1/bibliotheque/recherche-fiche-ia/globale', queryParameters: {'phrase': phrase, 'limite': limite});

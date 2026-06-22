@@ -166,6 +166,11 @@ export default function FAQModerationPage() {
                       {item.nbVues} vues
                     </span>
                   )}
+                  {item.nbUtile !== undefined && item.nbPasUtile !== undefined && (
+                    <span className="text-xs text-text-secondary ml-2">
+                      {item.nbUtile}👍 / {item.nbPasUtile}👎
+                    </span>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 pt-1 border-t border-border">

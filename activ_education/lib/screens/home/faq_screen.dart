@@ -236,9 +236,9 @@ class _FaqScreenState extends State<FaqScreen> {
                   ),
                 ),
               ),
-              if (isOpen)
+              if (isOpen) ...[
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                   child: Text(
                     faq.reponse,
                     style: AppTextStyles.bodyMedium.copyWith(
@@ -247,10 +247,67 @@ class _FaqScreenState extends State<FaqScreen> {
                     ),
                   ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                  child: Row(
+                    children: [
+                      _buildVoteButton(faq, true),
+                      const SizedBox(width: 8),
+                      _buildVoteButton(faq, false),
+                      const Spacer(),
+                      Text(
+                        '${faq.nbVues} vues',
+                        style: AppTextStyles.caption.copyWith(
+                          color: AppColors.textLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildVoteButton(EntreeFAQResponse faq, bool utile) {
+    final count = utile ? faq.nbUtile : faq.nbPasUtile;
+    final label = utile ? 'Utile' : 'Pas utile';
+    final icon = utile ? Icons.thumb_up_alt_outlined : Icons.thumb_down_alt_outlined;
+    return GestureDetector(
+      onTap: () async {
+        try {
+          await _api.explorer.voterFAQ(faq.trackingId, utile);
+          _loadFaqs();
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Erreur: ${_api.handleError(e)}')),
+            );
+          }
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: AppColors.textMedium),
+            const SizedBox(width: 4),
+            Text(
+              count > 0 ? '$count $label' : label,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textMedium),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
