@@ -21,10 +21,13 @@ class _QuizScreenState extends State<QuizScreen>
 
   QuizResponse? _quiz;
   List<QuestionResponse> _questions = [];
+  List<QuestionResponse> _remainingQuestions = [];
   Map<String, List<ReponseResponse>> _reponsesParQuestion = {};
   final Map<String, String> _reponsesChoisies = {};
 
   int _currentIndex = 0;
+  final Map<String, int> _domainAnswerCount = {};
+  static const _riasecCodes = ['R', 'I', 'A', 'S', 'E', 'C'];
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
@@ -110,6 +113,8 @@ class _QuizScreenState extends State<QuizScreen>
       }
       setState(() {
         _reponsesParQuestion = repMap;
+        _remainingQuestions = List.from(questionsSafe);
+        _domainAnswerCount.clear();
         _isLoading = false;
       });
       _animController.forward();
@@ -139,8 +144,10 @@ class _QuizScreenState extends State<QuizScreen>
       _currentQuestion != null &&
       _reponsesChoisies.containsKey(_currentQuestion!.trackingId);
 
-  double get _progress =>
-      _questions.isEmpty ? 0 : (_currentIndex + 1) / _questions.length;
+  double get _progress {
+    final total = _remainingQuestions.length + _reponsesChoisies.length;
+    return total == 0 ? 0 : (_reponsesChoisies.length) / total;
+  }
 
   void _selectReponse(String reponseId) {
     if (_currentQuestion == null) return;
@@ -151,13 +158,54 @@ class _QuizScreenState extends State<QuizScreen>
 
   void _nextQuestion() async {
     if (!_hasAnswered) return;
-    if (_currentIndex < _questions.length - 1) {
+
+    final reponseId = _reponsesChoisies[_currentQuestion!.trackingId];
+    final reponses = _reponsesParQuestion[_currentQuestion!.trackingId] ?? [];
+    final chosen = reponses.firstWhere(
+      (r) => r.trackingId == reponseId,
+      orElse: () => ReponseResponse(
+          trackingId: '', texteReponse: '', points: 0, questionTrackingId: ''),
+    );
+
+    final cat = chosen.categoriePoint?.toUpperCase();
+    if (cat != null && _riasecCodes.contains(cat)) {
+      _domainAnswerCount[cat] = (_domainAnswerCount[cat] ?? 0) + 1;
+    }
+
+    _remainingQuestions.removeWhere((q) => q.trackingId == _currentQuestion!.trackingId);
+
+    if (chosen.prochaineQuestionTrackingId != null) {
+      final branchIdx = _remainingQuestions.indexWhere(
+        (q) => q.trackingId == chosen.prochaineQuestionTrackingId);
+      if (branchIdx >= 0) {
+        final branchQ = _remainingQuestions.removeAt(branchIdx);
+        _remainingQuestions.insert(0, branchQ);
+      }
+    } else if (_remainingQuestions.length >= 2) {
+      _remainingQuestions.sort((a, b) {
+        final catA = _bestDomainFor(a);
+        final catB = _bestDomainFor(b);
+        final countA = _domainAnswerCount[catA] ?? 0;
+        final countB = _domainAnswerCount[catB] ?? 0;
+        return countA.compareTo(countB);
+      });
+    }
+
+    if (_remainingQuestions.isNotEmpty) {
       await _animController.reverse();
-      setState(() => _currentIndex++);
+      _questions = _remainingQuestions;
+      _currentIndex = 0;
       _animController.forward();
     } else {
       _submitQuiz();
     }
+  }
+
+  String _bestDomainFor(QuestionResponse q) {
+    if (q.domaine != null && q.domaine!.isNotEmpty) {
+      return q.domaine!;
+    }
+    return q.typeQuestion ?? 'GENERAL';
   }
 
   void _previousQuestion() async {
@@ -344,7 +392,7 @@ class _QuizScreenState extends State<QuizScreen>
                         style: AppTextStyles.label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
-                    Text('${_currentIndex + 1} sur ${_questions.length}',
+                    Text('Question ${_reponsesChoisies.length + 1}',
                         style: AppTextStyles.caption),
                   ],
                 ),
@@ -357,7 +405,7 @@ class _QuizScreenState extends State<QuizScreen>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${_currentIndex + 1}/${_questions.length}',
+                  '${_reponsesChoisies.length + 1}',
                   style: AppTextStyles.caption.copyWith(
                       color: AppColors.primary, fontWeight: FontWeight.w700),
                 ),

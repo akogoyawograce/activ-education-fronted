@@ -126,6 +126,7 @@ class ReponseResponse {
   final String? categoriePoint;
   final int points;
   final String questionTrackingId;
+  final String? prochaineQuestionTrackingId;
 
   ReponseResponse({
     required this.trackingId,
@@ -133,6 +134,7 @@ class ReponseResponse {
     this.categoriePoint,
     required this.points,
     required this.questionTrackingId,
+    this.prochaineQuestionTrackingId,
   });
 
   factory ReponseResponse.fromJson(Map<String, dynamic> json) =>
@@ -142,6 +144,7 @@ class ReponseResponse {
         categoriePoint: json['categoriePoint'],
         points: json['points'] ?? 0,
         questionTrackingId: json['questionTrackingId'] ?? '',
+        prochaineQuestionTrackingId: json['prochaineQuestionTrackingId'],
       );
 }
 
